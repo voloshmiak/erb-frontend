@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+:root {
+  --color-brand-beige: #F3EDE4;
+  --color-brand-dark: #2D2926;
+  --font-display: "Inter", sans-serif;
+}
