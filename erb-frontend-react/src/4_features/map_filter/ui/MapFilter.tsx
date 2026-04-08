@@ -71,7 +71,7 @@ export const MapFilter = () => {
   };
 
   return (
-    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200 w-96 overflow-hidden">
+    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200 w-full overflow-hidden">
       {/* Заголовок з кнопками */}
       <div className="flex items-center justify-between p-4 border-b border-slate-100">
         <div>

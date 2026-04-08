@@ -26,6 +26,7 @@ export const Header = () => {
     setSelectedStation,
     selectedStation,
     eventLog,
+    unreadCount,
     requestMapCenter,
     toggleTerrain,
     isTerrainEnabled,
@@ -53,9 +54,20 @@ export const Header = () => {
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, []);
 
-  const latestEvents = useMemo(() => eventLog.slice(0, 5), [eventLog]);
+  const latestEvents = useMemo(() => eventLog.slice(0, 15), [eventLog]);
 
-  const unreadCountLabel = eventLog.length > 9 ? '9+' : String(eventLog.length);
+  const eventMeta: Record<string, { emoji: string; label: string; color: string; bg: string }> = {
+    wagonMoved:         { emoji: '🛤', label: 'Переміщення',       color: 'text-indigo-700',  bg: 'bg-indigo-50' },
+    wagonArrived:       { emoji: '🏁', label: 'Прибуття',          color: 'text-green-700',   bg: 'bg-green-50' },
+    wagonDispatched:    { emoji: '🚀', label: 'Відправлення',      color: 'text-orange-700',  bg: 'bg-orange-50' },
+    wagonUnloaded:      { emoji: '📥', label: 'Розвантаження',     color: 'text-slate-700',   bg: 'bg-slate-100' },
+    orderCreated:       { emoji: '📦', label: 'Нове замовлення',   color: 'text-blue-700',    bg: 'bg-blue-50' },
+    assignmentCreated:  { emoji: '🗺', label: 'Маршрут',           color: 'text-cyan-700',    bg: 'bg-cyan-50' },
+    orderFulfilled:     { emoji: '✅', label: 'Виконано',           color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  };
+  const defaultMeta = { emoji: '🔔', label: 'Подія', color: 'text-slate-600', bg: 'bg-slate-50' };
+
+  const unreadCountLabel = unreadCount > 99 ? '99+' : String(unreadCount);
 
   const closeMenus = () => setActiveMenu(null);
 
@@ -356,14 +368,17 @@ export const Header = () => {
 
         <div ref={menuRef} className="relative flex items-center gap-3 ml-2">
           <button
-            onClick={() => setActiveMenu((prev) => (prev === 'notifications' ? null : 'notifications'))}
+            onClick={() => {
+              setActiveMenu((prev) => (prev === 'notifications' ? null : 'notifications'));
+              useMapStore.setState({ unreadCount: 0 });
+            }}
             className="p-2 text-slate-500 hover:bg-slate-100 rounded-full relative transition-colors"
             aria-expanded={activeMenu === 'notifications'}
             aria-label="Сповіщення"
           >
             <Bell size={20} />
-            {eventLog.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white rounded-full text-[10px] leading-4 border-2 border-white">
+            {unreadCount > 0 && (
+              <span className="absolute top-1 -right-0.5 min-w-4 h-4.25 px-1 bg-red-500 text-white rounded-full text-[8px] leading-4 border-2 border-white">
                 {unreadCountLabel}
               </span>
             )}
@@ -397,33 +412,44 @@ export const Header = () => {
           </div>
 
           {activeMenu === 'notifications' && (
-            <div className="absolute right-0 top-full mt-3 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-[3200]">
+            <div className="absolute right-0 top-full mt-3 w-96 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-[3200]">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Сповіщення</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Останні події з системи</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{eventLog.length} подій у журналі</p>
                 </div>
                 <button onClick={resetView} className="text-[10px] font-medium text-blue-600 hover:text-blue-700">
                   Центр
                 </button>
               </div>
-              <div className="max-h-80 overflow-y-auto">
+              <div className="max-h-96 overflow-y-auto">
                 {latestEvents.length > 0 ? (
-                  latestEvents.map((event) => (
-                    <div key={event.id} className="px-4 py-3 border-b border-slate-50 last:border-b-0 hover:bg-slate-50">
-                      <div className="flex items-center justify-between gap-3 mb-1">
-                        <span className="text-[10px] font-semibold uppercase text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
-                          {event.type}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                  latestEvents.map((event) => {
+                    const meta = eventMeta[event.type] || defaultMeta;
+                    return (
+                      <div key={event.id} className="px-4 py-2.5 border-b border-slate-50 last:border-b-0 hover:bg-slate-50/80 transition-colors">
+                        <div className="flex items-start gap-2.5">
+                          <span className="text-base mt-0.5 flex-shrink-0">{meta.emoji}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-0.5">
+                              <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full ${meta.bg} ${meta.color}`}>
+                                {meta.label}
+                              </span>
+                              <span className="text-[10px] text-slate-400 flex-shrink-0">
+                                {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-600 leading-relaxed truncate">{event.message}</p>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-600 leading-relaxed">{event.message}</p>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
-                  <div className="px-4 py-6 text-center text-xs text-slate-400">Немає нових подій</div>
+                  <div className="px-4 py-8 text-center">
+                    <span className="text-2xl block mb-2">🔕</span>
+                    <p className="text-xs text-slate-400">Немає нових подій</p>
+                  </div>
                 )}
               </div>
             </div>

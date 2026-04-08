@@ -9,10 +9,10 @@ import 'leaflet/dist/leaflet.css';
 
 const UKRAINE_BOUNDS = L.latLngBounds([
   [40.75, 22.0],
-  [52.35, 40.25],
+  [55.5, 40.25],
 ]);
 
-const WAGON_LABEL_MIN_ZOOM = 9.5;
+const WAGON_LABEL_MIN_ZOOM = 7;
 
 type StationCategory = 'freightStations' | 'sortingStations' | 'portStations' | 'borderStations';
 
@@ -62,29 +62,50 @@ const escapeHtml = (text: string): string =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 
-const createStationWagonLabelIcon = (total: number, byTypeText: string) =>
-  L.divIcon({
+const WAGON_TYPE_ICONS: Record<string, string> = {
+  gondola:       '🪣',
+  grain_hopper:  '🌾',
+  cement_hopper: '🏗',
+};
+
+const getWagonTypeIcon = (type: string): string =>
+  WAGON_TYPE_ICONS[type.toLowerCase().trim()] ?? type.slice(0, 3).toUpperCase();
+
+const createStationWagonLabelIcon = (total: number, byType: Record<string, number>) => {
+  const grouped: Record<string, number> = {};
+  for (const [type, count] of Object.entries(byType)) {
+    const icon = getWagonTypeIcon(type);
+    grouped[icon] = (grouped[icon] || 0) + count;
+  }
+  const chips = Object.entries(grouped)
+    .sort((a, b) => b[1] - a[1])
+    .map(([icon, count]) =>
+      `<span style="display:inline-flex;align-items:center;gap:2px;background:rgba(99,102,241,.1);border-radius:5px;padding:1px 5px;font-size:12px;font-weight:700;color:#1e293b;">${icon}${count}</span>`
+    )
+    .join('');
+
+  return L.divIcon({
     className: 'station-wagon-label-icon',
     html: `
       <div style="
-        min-width: 90px;
-        max-width: 180px;
-        padding: 3px 6px;
-        border-radius: 8px;
-        border: 1px solid rgba(148,163,184,.45);
-        background: rgba(255,255,255,.96);
-        box-shadow: 0 2px 8px rgba(15,23,42,.16);
+        padding: 4px 8px;
+        border-radius: 10px;
+        border: 1.5px solid rgba(99,102,241,.35);
+        background: rgba(255,255,255,.98);
+        box-shadow: 0 3px 12px rgba(15,23,42,.22);
         text-align: center;
-        line-height: 1.15;
+        line-height: 1.2;
         pointer-events: none;
+        white-space: nowrap;
       ">
-        <div style="font-size:11px;font-weight:800;color:#0f172a;white-space:nowrap;">${total} ваг.</div>
-        <div style="font-size:10px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(byTypeText)}</div>
+        <div style="font-size:15px;font-weight:900;color:#1e293b;letter-spacing:-0.3px;">${total} <span style="font-size:11px;font-weight:600;color:#6366f1;">ваг.</span></div>
+        ${chips ? `<div style="display:flex;gap:3px;flex-wrap:nowrap;justify-content:center;margin-top:3px;">${chips}</div>` : ''}
       </div>
     `,
-    iconSize: [120, 34],
-    iconAnchor: [60, 44],
+    iconSize: [150, 50],
+    iconAnchor: [75, 60],
   });
+};
 
 const normalizeStationCategory = (rawType?: string): StationCategory => {
   const typeKey = normalizeTypeKey(rawType);
@@ -189,11 +210,47 @@ function ZoomWatcher({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   return null;
 }
 
+const ANIMATION_DURATION = 15_000; // 15 сек
+
+const createOrderAnimationIcon = (type: 'orderCreated' | 'orderFulfilled') => {
+  const className = type === 'orderCreated' ? 'order-created-ring' : 'order-fulfilled-ring';
+  const html = type === 'orderCreated'
+    ? `<div class="${className}"><div class="ring-inner"></div><div class="ring-outer"></div></div>`
+    : `<div class="${className}"><div class="ring-inner"></div><div class="ring-check">✅</div></div>`;
+
+  return L.divIcon({
+    className,
+    html,
+    iconSize: [70, 70],
+    iconAnchor: [35, 35],
+  });
+};
+
 export const RailwayMap = () => {
-  const { graph, fleetStatus, wagons, isLoading, filters, selectedStation, setSelectedStation, setSelectedWagon, isTerrainEnabled } = useMapStore();
+  const { graph, fleetStatus, wagons, isLoading, filters, selectedStation, setSelectedStation, setSelectedWagon, isTerrainEnabled, activeRoutes, stationAnimations } = useMapStore();
   const fleetSummary = summarizeFleetStatus(fleetStatus);
   const [currentZoom, setCurrentZoom] = useState(6);
   const showStationWagonLabels = currentZoom >= WAGON_LABEL_MIN_ZOOM;
+
+  // Авто-видалення анімацій через 15 сек
+  useEffect(() => {
+    const ids = Object.keys(stationAnimations);
+    if (ids.length === 0) return;
+
+    const timers = ids.map((id) => {
+      const anim = stationAnimations[id];
+      const elapsed = Date.now() - anim.createdAt;
+      const remaining = Math.max(0, ANIMATION_DURATION - elapsed);
+      return setTimeout(() => {
+        useMapStore.setState((state) => {
+          const { [id]: _, ...rest } = state.stationAnimations;
+          return { stationAnimations: rest };
+        });
+      }, remaining);
+    });
+
+    return () => timers.forEach(clearTimeout);
+  }, [stationAnimations]);
 
   const mapLayer = isTerrainEnabled
     ? {
@@ -368,10 +425,6 @@ export const RailwayMap = () => {
           const stationColor = getStationTypeColor(station.type);
           const isSelected = selectedStation?.name === station.name;
           const stationWagons = wagonsByStation[station.name];
-          const byTypeEntries = Object.entries(stationWagons?.byType || {}).sort((a, b) => b[1] - a[1]);
-          const byTypeText = byTypeEntries.length > 0
-            ? byTypeEntries.map(([type, count]) => `${type}: ${count}`).join(' • ')
-            : 'типи відсутні';
           const showLabel = showStationWagonLabels;
 
           return (
@@ -399,7 +452,7 @@ export const RailwayMap = () => {
                 <Marker
                   key={`${station.name}-wagon-label`}
                   position={[station.lat, station.lng]}
-                  icon={createStationWagonLabelIcon(stationWagons?.total || 0, byTypeText)}
+                  icon={createStationWagonLabelIcon(stationWagons?.total || 0, stationWagons?.byType || {})}
                   interactive={false}
                   keyboard={false}
                 />
@@ -407,6 +460,32 @@ export const RailwayMap = () => {
             </>
           );
         })}
+
+        {/* АНІМАЦІЇ ЗАМОВЛЕНЬ */}
+        {Object.values(stationAnimations).map((anim) => (
+          <Marker
+            key={`anim-${anim.orderId}-${anim.type}`}
+            position={[anim.lat, anim.lng]}
+            icon={createOrderAnimationIcon(anim.type)}
+            interactive={false}
+            keyboard={false}
+          />
+        ))}
+
+        {/* АКТИВНІ МАРШРУТИ (пунктирні лінії) */}
+        {Object.values(activeRoutes).map((route) =>
+          route.points.length >= 2 ? (
+            <Polyline
+              key={`route-${route.wagonId}`}
+              positions={route.points}
+              color="#ef4444"
+              weight={3.5}
+              opacity={0.9}
+              dashArray="10 6"
+              interactive={false}
+            />
+          ) : null
+        )}
 
       </MapContainer>
 
@@ -430,9 +509,15 @@ export const RailwayMap = () => {
             <span>Прикордонні ({stationTypeCounts.border})</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-0.5 bg-blue-400" /> 
+            <div className="w-4 h-0.5 bg-blue-400" />
             <span>Залізничний шлях ({visibleEdges.length})</span>
           </div>
+          {Object.keys(activeRoutes).length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-0.5 border-t-2 border-dashed border-red-500" />
+              <span>Активні маршрути ({Object.keys(activeRoutes).length})</span>
+            </div>
+          )}
           <div className="pt-2 mt-2 border-t border-slate-100 space-y-1.5 text-slate-700">
             <div className="flex items-center justify-between gap-4">
               <span>Парк</span>
@@ -449,10 +534,6 @@ export const RailwayMap = () => {
             <div className="flex items-center justify-between gap-4 text-slate-500">
               <span>Стоять / обслуговування</span>
               <span className="font-medium text-rose-600">{fleetSummary.stationary}</span>
-            </div>
-            <div className="flex items-center justify-between gap-4 text-slate-500">
-              <span>Відображено вагонів</span>
-              <span className="font-medium text-slate-700">{visibleWagons.length}</span>
             </div>
           </div>
         </div>
