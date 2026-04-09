@@ -72,24 +72,34 @@ const deriveByTypeFromWagons = (wagons: Wagon[]): Record<string, Required<FleetS
 };
 
 const normalizeFleetStatus = (rawData: unknown): FleetStatusSummary => {
-  const raw = (rawData || {}) as FleetStatusLike;
+  const raw = (rawData || {}) as Record<string, unknown>;
   const wagons = normalizeWagons(rawData);
-  const normalizedByTypeEntries = Object.entries(raw.byType || {}).map(
-    ([type, stats]) => [type, normalizeFleetBucket(stats)] as const
-  );
-  const normalizedByType = Object.fromEntries(normalizedByTypeEntries);
-  const byType = Object.keys(normalizedByType).length > 0 ? normalizedByType : deriveByTypeFromWagons(wagons);
-  const byTypeEntries = Object.entries(byType);
 
-  const totalWagons =
-    toCount(raw.totalWagons) ||
-    (wagons.length > 0 ? wagons.length : byTypeEntries.reduce((sum, [, stats]) => sum + stats.total, 0));
+  // нова структура: statusCounts з snake_case ключами
+  const sc = (raw.statusCounts && typeof raw.statusCounts === 'object')
+    ? raw.statusCounts as Record<string, unknown>
+    : null;
+
+  const loaded      = sc ? toCount(sc.loaded)      : 0;
+  const emptyMoving = sc ? toCount(sc.empty_moving) : 0;
+  const idle        = sc ? toCount(sc.idle)         : 0;
+  const maintenance = sc ? toCount(sc.maintenance)  : 0;
+
+  const totalWagons = sc
+    ? loaded + emptyMoving + idle + maintenance
+    : (toCount((raw as FleetStatusLike).totalWagons) || wagons.length);
+
+  // якщо є statusCounts — використовуємо його як джерело правди для статусів
+  // byType з вагонів тільки як fallback коли statusCounts відсутній
+  const resolvedByType = sc
+    ? { _all: normalizeFleetBucket({ emptyMoving, idle, loaded, maintenance, total: totalWagons }) }
+    : deriveByTypeFromWagons(wagons);
 
   return {
     totalWagons,
-    byType,
-    avgEmptyRunKmToday: Number.isFinite(Number(raw.avgEmptyRunKmToday))
-      ? Number(raw.avgEmptyRunKmToday)
+    byType: resolvedByType,
+    avgEmptyRunKmToday: Number.isFinite(Number((raw as FleetStatusLike).avgEmptyRunKmToday))
+      ? Number((raw as FleetStatusLike).avgEmptyRunKmToday)
       : null,
     wagons,
   };
