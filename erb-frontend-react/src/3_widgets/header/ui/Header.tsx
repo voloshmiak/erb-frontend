@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Bell, Settings, User, X, LocateFixed, MapPinned, SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { useMapStore } from '@/6_shared/model/store';
 import type { Station } from '@/5_entities/station/model/type';
@@ -12,12 +13,14 @@ type SearchSuggestion =
 const DEFAULT_CENTER = { lat: 48.3794, lng: 31.1656, zoom: 6 };
 
 const NAV_TABS = [
-  { id: 'main', label: 'Головна мапа', active: true },
-  { id: 'live', label: 'Операції наживо', active: false },
-  { id: 'schedule', label: 'Розклад', active: false },
+  { id: 'main', label: 'Головна мапа', path: '/' },
+  { id: 'live', label: 'Операції наживо', path: '/operations' },
+  { id: 'schedule', label: 'Розклад', path: '/schedule' },
 ];
 
 export const Header = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const {
     graph,
     wagons,
@@ -235,17 +238,22 @@ export const Header = () => {
         </div>
         
         <nav className="flex items-center gap-6">
-          {NAV_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              className={`text-sm font-medium transition-colors relative py-5 ${
-                tab.active ? "font-semibold" : 'text-slate-500 hover:text-slate-800'
-              }`} style={tab.active ? { color: '#002e7e' } : {}}
-            >
-              {tab.label}
-              {tab.active && <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: '#002e7e' }} />}
-            </button>
-          ))}
+          {NAV_TABS.map((tab) => {
+            const isActive = location.pathname === tab.path;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => navigate(tab.path)}
+                className={`text-sm font-medium transition-colors relative py-5 ${
+                  isActive ? "font-semibold" : 'text-slate-500 hover:text-slate-800'
+                }`} 
+                style={isActive ? { color: '#002e7e' } : {}}
+              >
+                {tab.label}
+                {isActive && <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: '#002e7e' }} />}
+              </button>
+            );
+          })}
         </nav>
       </div>
 
