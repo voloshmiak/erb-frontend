@@ -267,11 +267,17 @@ function ZoomWatcher({ onZoomChange }: { onZoomChange: (zoom: number) => void })
 
 const ANIMATION_DURATION = 15_000; // 15 сек
 
-const createOrderAnimationIcon = (type: 'orderCreated' | 'orderFulfilled') => {
-  const className = type === 'orderCreated' ? 'order-created-ring' : 'order-fulfilled-ring';
-  const html = type === 'orderCreated'
-    ? `<div class="${className}"><div class="ring-inner"></div><div class="ring-outer"></div></div>`
-    : `<div class="${className}"><div class="ring-inner"></div><div class="ring-check">✅</div></div>`;
+const createOrderAnimationIcon = (type: 'orderCreated' | 'orderFulfilled' | 'wagonUnloaded') => {
+  const className =
+    type === 'orderCreated' ? 'order-created-ring' :
+    type === 'orderFulfilled' ? 'order-fulfilled-ring' :
+    'wagon-unloaded-ring';
+  const html =
+    type === 'orderCreated'
+      ? `<div class="${className}"><div class="ring-inner"></div><div class="ring-outer"></div></div>`
+    : type === 'orderFulfilled'
+      ? `<div class="${className}"><div class="ring-inner"></div><div class="ring-check">✅</div></div>`
+    : `<div class="${className}"><div class="ring-inner"></div><div class="ring-outer"></div></div>`;
 
   return L.divIcon({
     className,
@@ -282,7 +288,7 @@ const createOrderAnimationIcon = (type: 'orderCreated' | 'orderFulfilled') => {
 };
 
 export const RailwayMap = () => {
-  const { graph, fleetStatus, wagons, isLoading, filters, selectedStation, setSelectedStation, setSelectedWagon, isTerrainEnabled, activeRoutes, stationAnimations } = useMapStore();
+  const { graph, fleetStatus, wagons, isLoading, filters, selectedStation, setSelectedStation, setSelectedWagon, isTerrainEnabled, assignmentRoutes, stationAnimations } = useMapStore();
   const fleetSummary = summarizeFleetStatus(fleetStatus);
   const [currentZoom, setCurrentZoom] = useState(6);
   const showStationWagonLabels = currentZoom >= WAGON_LABEL_MIN_ZOOM;
@@ -533,20 +539,22 @@ export const RailwayMap = () => {
           />
         ))}
 
-        {/* АКТИВНІ МАРШРУТИ (пунктирні лінії) */}
-        {Object.values(activeRoutes).map((route) =>
+        {/* МАРШРУТИ ПРИЗНАЧЕНЬ (анімований пунктир) */}
+        {Object.values(assignmentRoutes).map((route) =>
           route.points.length >= 2 ? (
             <Polyline
-              key={`route-${route.wagonId}`}
+              key={`assignment-${route.assignmentId}`}
               positions={route.points}
               color="#ef4444"
-              weight={3.5}
+              weight={3}
               opacity={0.9}
-              dashArray="10 6"
+              dashArray="12 6"
+              className="assignment-route-animated"
               interactive={false}
             />
           ) : null
         )}
+
 
       </MapContainer>
 
@@ -573,10 +581,10 @@ export const RailwayMap = () => {
             <div className="w-4 h-0.5 bg-blue-400" />
             <span>Залізничний шлях ({visibleEdges.length})</span>
           </div>
-          {Object.keys(activeRoutes).length > 0 && (
+          {Object.keys(assignmentRoutes).length > 0 && (
             <div className="flex items-center gap-2">
               <div className="w-4 h-0.5 border-t-2 border-dashed border-red-500" />
-              <span>Активні маршрути ({Object.keys(activeRoutes).length})</span>
+              <span>Маршрути ({Object.keys(assignmentRoutes).length})</span>
             </div>
           )}
           <div className="pt-2 mt-2 border-t border-slate-100 space-y-1.5 text-slate-700">

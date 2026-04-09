@@ -24,7 +24,7 @@ const normalizeEventType = (value: unknown): EventType | null => {
   return EVENT_TYPES_SET.has(normalized) ? (normalized as EventType) : null;
 };
 
-const resolveEventMessage = (type: EventType, payload: Record<string, unknown>, fulfilledOrderId?: string | null): string => {
+const resolveEventMessage = (type: EventType, payload: Record<string, unknown>): string => {
   switch (type) {
     case 'orderCreated': {
       const client = String(payload.clientName || '').trim();
@@ -33,8 +33,12 @@ const resolveEventMessage = (type: EventType, payload: Record<string, unknown>, 
       return `${client || 'Клієнт'}: ${qty} × ${wType || 'вагон'}`;
     }
     case 'assignmentCreated': {
-      const km = Number(payload.EmptyRunKM) || 0;
-      const eta = payload.EstimatedArrival ? new Date(String(payload.EstimatedArrival)).toLocaleDateString('uk-UA') : '';
+      const assignment = (payload.assignment && typeof payload.assignment === 'object')
+        ? payload.assignment as Record<string, unknown>
+        : payload;
+      const km = Number(assignment.emptyRunKm || assignment.EmptyRunKM) || 0;
+      const etaRaw = assignment.estimatedArrival || assignment.EstimatedArrival;
+      const eta = etaRaw ? new Date(String(etaRaw)).toLocaleDateString('uk-UA') : '';
       return `Маршрут ${km}км${eta ? `, ETA ${eta}` : ''}`;
     }
     case 'wagonDispatched': {
@@ -53,13 +57,12 @@ const resolveEventMessage = (type: EventType, payload: Record<string, unknown>, 
       return `${wId ? wId.slice(0, 8) : 'Вагон'} прибув на станцію`;
     }
     case 'orderFulfilled': {
-      const oId = fulfilledOrderId || String(payload.orderId || payload.id || '').trim();
+      const oId = String(payload.id || '').trim();
       return `Замовлення ${oId ? oId.slice(0, 8) : ''} виконано`;
     }
     case 'wagonUnloaded': {
-      const num = String(payload.number || '').trim();
-      const wType = String(payload.type || '').trim();
-      return `${num || 'Вагон'} розвантажено${wType ? ` (${wType})` : ''}`;
+      const num = String(payload.wagonNumber || '').trim();
+      return `${num || 'Вагон'} розвантажено`;
     }
     default:
       return 'Системна подія';
@@ -67,6 +70,8 @@ const resolveEventMessage = (type: EventType, payload: Record<string, unknown>, 
 };
 
 let abortController: AbortController | null = null;
+const wagonPositions: Record<string, [number, number]> = {};   // wagonId → остання позиція
+const assignmentOrderMap: Record<string, string> = {};          // assignmentId → orderId
 
 interface MapEvent {
   id: string;
@@ -85,10 +90,11 @@ interface MapFilters {
   loadingWagons: boolean;
 }
 
-interface ActiveRoute {
+export interface AssignmentRoute {
+  assignmentId: string;
   wagonId: string;
-  wagonNumber: string;
   points: [number, number][];
+  createdAt: number;
 }
 
 export interface StationAnimation {
@@ -96,7 +102,7 @@ export interface StationAnimation {
   stationId: string;
   lat: number;
   lng: number;
-  type: 'orderCreated' | 'orderFulfilled';
+  type: 'orderCreated' | 'orderFulfilled' | 'wagonUnloaded';
   createdAt: number;
 }
 
@@ -107,7 +113,7 @@ interface MapState {
   selectedWagon: Wagon | null;
   eventLog: MapEvent[];
   unreadCount: number;
-  activeRoutes: Record<string, ActiveRoute>;
+  assignmentRoutes: Record<string, AssignmentRoute>;
   stationAnimations: Record<string, StationAnimation>;
   orderStationMap: Record<string, string>; // orderId -> stationId
   isLoading: boolean;
@@ -142,7 +148,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   selectedWagon: null,
   eventLog: [],
   unreadCount: 0,
-  activeRoutes: {},
+  assignmentRoutes: {},
   stationAnimations: {},
   orderStationMap: {},
   isLoading: false,
@@ -216,23 +222,20 @@ export const useMapStore = create<MapState>((set, get) => ({
         const type = normalizeEventType(parsed.type || parsed.eventType);
         if (!type) return;
 
-        // orderFulfilled має data як рядок (orderId), решта — об'єкт
         const rawData = parsed.data;
         const payload = (rawData && typeof rawData === 'object'
           ? rawData
           : parsed) as Record<string, unknown>;
-        const orderFulfilledId = (type === 'orderFulfilled' && typeof rawData === 'string') ? rawData : null;
 
         const timestampRaw = payload.arrivedAt || payload.EstimatedArrival || payload.createdAt || payload.lastUnloadTime;
         const timestamp = timestampRaw ? new Date(String(timestampRaw)) : new Date();
 
-        const eventId = orderFulfilledId
-          || String(payload.ID || payload.id || payload.assignmentId || `${Date.now()}-${Math.random()}`);
+        const eventId = String(payload.id || payload.assignmentId || `${Date.now()}-${Math.random()}`);
 
         const mapEvent: MapEvent = {
           id: eventId,
           type,
-          message: resolveEventMessage(type, payload, orderFulfilledId),
+          message: resolveEventMessage(type, payload),
           timestamp: Number.isNaN(timestamp.getTime()) ? new Date() : timestamp,
         };
 
@@ -242,38 +245,59 @@ export const useMapStore = create<MapState>((set, get) => ({
             unreadCount: state.unreadCount + 1,
           };
 
-          // Побудова активних маршрутів
-          // wagonDispatched: Go default keys — WagonID
-          // wagonMoved: json tags — wagonId, wagonNumber
-          // wagonArrived: json tags — wagonId
-          // wagonUnloaded: full Wagon — id, number
-          const wagonId = String(payload.wagonId || payload.WagonID || payload.id || '').trim();
-          const wagonNumber = String(payload.wagonNumber || payload.number || '').trim();
+          const wagonId = String(payload.wagonId || payload.id || '').trim();
           const lat = Number(payload.lat);
           const lng = Number(payload.lng);
 
-          if (type === 'wagonDispatched' && wagonId) {
-            newState.activeRoutes = {
-              ...state.activeRoutes,
-              [wagonId]: { wagonId, wagonNumber: wagonNumber || wagonId, points: [] },
-            };
-          }
-
+          // зберігаємо останню позицію вагону для анімації розвантаження
           if (type === 'wagonMoved' && wagonId && Number.isFinite(lat) && Number.isFinite(lng)) {
-            const existing = state.activeRoutes[wagonId];
-            newState.activeRoutes = {
-              ...state.activeRoutes,
-              [wagonId]: {
-                wagonId,
-                wagonNumber: wagonNumber || existing?.wagonNumber || wagonId,
-                points: [...(existing?.points || []), [lat, lng]],
-              },
-            };
+            wagonPositions[wagonId] = [lat, lng];
           }
 
-          if ((type === 'wagonArrived' || type === 'wagonUnloaded') && wagonId) {
-            const { [wagonId]: _, ...rest } = state.activeRoutes;
-            newState.activeRoutes = rest;
+          if (type === 'wagonUnloaded' && wagonId) {
+            const pos = wagonPositions[wagonId];
+            delete wagonPositions[wagonId];
+            if (pos) {
+              newState.stationAnimations = {
+                ...state.stationAnimations,
+                [`unload-${wagonId}`]: {
+                  orderId: wagonId,
+                  stationId: '',
+                  lat: pos[0],
+                  lng: pos[1],
+                  type: 'wagonUnloaded',
+                  createdAt: Date.now(),
+                },
+              };
+            }
+          }
+
+          // assignmentCreated — пунктирний маршрут по станціях
+          if (type === 'assignmentCreated') {
+            const assignment = (payload.assignment && typeof payload.assignment === 'object')
+              ? payload.assignment as Record<string, unknown>
+              : payload;
+            const assignmentId = String(assignment.id || '').trim();
+            const aWagonId = String(assignment.wagonId || '').trim();
+            const routeIds = Array.isArray(payload.route)
+              ? (payload.route as unknown[]).map((id) => String(id).trim())
+              : [];
+
+            const aOrderId = String(assignment.orderId || '').trim();
+            if (assignmentId && routeIds.length >= 2) {
+              const points = routeIds
+                .map((sid) => state.graph?.stations.find((s) => String(s.stationId || '').trim() === sid))
+                .filter(Boolean)
+                .map((s) => [s!.lat, s!.lng] as [number, number]);
+
+              if (points.length >= 2) {
+                if (aOrderId) assignmentOrderMap[assignmentId] = aOrderId;
+                newState.assignmentRoutes = {
+                  ...state.assignmentRoutes,
+                  [assignmentId]: { assignmentId, wagonId: aWagonId, points, createdAt: Date.now() },
+                };
+              }
+            }
           }
 
           // orderCreated — анімація на станції призначення
@@ -301,10 +325,26 @@ export const useMapStore = create<MapState>((set, get) => ({
             }
           }
 
-          // orderFulfilled — замінити анімацію на "виконано"
+          // orderFulfilled — анімація + очищення маршрутів призначення
           if (type === 'orderFulfilled') {
-            const fulfilledOrderId = orderFulfilledId || String(payload.orderId || payload.OrderID || payload.id || '').trim();
-            const stationToId = state.orderStationMap[fulfilledOrderId];
+            const fulfilledOrderId = String(payload.id || '').trim();
+            const stationToId = String(payload.stationToId || '').trim() || state.orderStationMap[fulfilledOrderId];
+
+            // видалити всі assignmentRoutes для цього замовлення
+            if (fulfilledOrderId) {
+              const idsToRemove = Object.keys(assignmentOrderMap).filter(
+                (aid) => assignmentOrderMap[aid] === fulfilledOrderId
+              );
+              if (idsToRemove.length > 0) {
+                const filteredRoutes = { ...state.assignmentRoutes };
+                idsToRemove.forEach((aid) => {
+                  delete filteredRoutes[aid];
+                  delete assignmentOrderMap[aid];
+                });
+                newState.assignmentRoutes = filteredRoutes;
+              }
+            }
+
             if (fulfilledOrderId && stationToId) {
               const targetStation = state.graph?.stations.find(
                 (s) => String(s.stationId || '').trim() === stationToId
@@ -336,39 +376,51 @@ export const useMapStore = create<MapState>((set, get) => ({
       }
     };
 
-    (async () => {
-      try {
-        const response = await fetch(`${baseUrl}/events/stream`, {
-          signal: abortController!.signal,
-        });
+    const connect = async () => {
+      while (abortController && !abortController.signal.aborted) {
+        try {
+          const response = await fetch(`${baseUrl}/events/stream`, {
+            signal: abortController!.signal,
+          });
 
-        if (!response.body) return;
+          if (!response.body) break;
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
 
-          for (const line of lines) {
-            processLine(line);
+            for (const line of lines) {
+              processLine(line);
+            }
           }
+
+          // обробити залишок буфера
+          if (buffer.trim()) processLine(buffer);
+        } catch (error) {
+          if ((error as Error).name === 'AbortError') return;
+          console.warn('⚠️ Event stream disconnected, reconnecting in 3s...', error);
         }
 
-        // обробити залишок буфера
-        if (buffer.trim()) processLine(buffer);
-      } catch (error) {
-        if ((error as Error).name !== 'AbortError') {
-          console.error('❌ Event stream error:', error);
-        }
+        // затримка перед перепідключенням
+        await new Promise<void>((resolve) => {
+          const timeout = setTimeout(resolve, 3000);
+          abortController!.signal.addEventListener('abort', () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+        });
       }
-    })();
+    };
+
+    connect();
   },
 
   disconnectEventStream: () => {
