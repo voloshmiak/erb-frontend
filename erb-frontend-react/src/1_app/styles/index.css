@@ -237,6 +237,18 @@
   color: #002e7e;
 }
 
+/* Анімований пунктир маршруту призначення */
+.assignment-route-animated {
+  animation: none;
+}
+.assignment-route-animated path {
+  stroke-dashoffset: 0;
+  animation: dashMove 1s linear infinite;
+}
+@keyframes dashMove {
+  to { stroke-dashoffset: -18; }
+}
+
 /* Анімація кільця — нове замовлення (оранжевий пульс) */
 .order-created-ring {
   pointer-events: none;
@@ -298,4 +310,35 @@
   0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   60% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
   100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+}
+
+/* Анімація розвантаження вагону (бурштиновий пульс, 3 рази) */
+.wagon-unloaded-ring {
+  pointer-events: none;
+}
+.wagon-unloaded-ring .ring-inner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.2);
+  animation: unloadPulse 1.4s ease-out 3;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+.wagon-unloaded-ring .ring-outer {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #f59e0b;
+  animation: unloadPulse 1.4s ease-out 3 0.5s;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+}
+@keyframes unloadPulse {
+  0% { width: 14px; height: 14px; opacity: 0.9; border-width: 3px; }
+  100% { width: 52px; height: 52px; opacity: 0; border-width: 1px; }
 }
