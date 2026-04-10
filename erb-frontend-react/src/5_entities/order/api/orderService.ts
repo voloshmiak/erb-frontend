@@ -1,0 +1,40 @@
+const BASE_URL = 'https://erb-backend-762050733390.europe-central2.run.app/api';
+
+export type WagonType = 'gondola' | 'grain_hopper' | 'cement_hopper';
+
+export interface CreateOrderDto {
+  clientName: string;
+  desiredDate: string;
+  quantity: number;
+  stationToId: string;
+  wagonType: WagonType;
+}
+
+export const orderService = {
+  async getOrders() {
+    const response = await fetch(`${BASE_URL}/orders`);
+    if (!response.ok) throw new Error('Помилка завантаження заявок');
+    const data = await response.json();
+    return data.orders || [];
+  },
+
+  async createOrder(payload: CreateOrderDto) {
+    const response = await fetch(`${BASE_URL}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Помилка створення заявки');
+    return response.json();
+  }
+};
+
+export interface Asset {
+  id: string;
+  type: 'gondola' | 'grain_hopper' | 'cement_hopper' | 'locomotive';
+  status: 'available' | 'maintenance' | 'in_transit';
+  location: string;
+  lastInspection: string;
+}
