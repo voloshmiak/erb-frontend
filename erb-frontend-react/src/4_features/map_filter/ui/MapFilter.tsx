@@ -16,6 +16,38 @@ const wagonFilterItems = [
   { id: 'loadingWagons', label: 'Завантаження', icon: Package, description: 'На завантаженні', color: 'text-orange-600' },
 ] as const;
 
+const filterPresets = {
+  operational: {
+    freightStations: true,
+    sortingStations: true,
+    portStations: true,
+    borderStations: true,
+    movingWagons: true,
+    stationaryWagons: false,
+    loadingWagons: true,
+  },
+  analytics: {
+    freightStations: true,
+    sortingStations: true,
+    portStations: true,
+    borderStations: true,
+    movingWagons: false,
+    stationaryWagons: true,
+    loadingWagons: true,
+  },
+  all: {
+    freightStations: true,
+    sortingStations: true,
+    portStations: true,
+    borderStations: true,
+    movingWagons: true,
+    stationaryWagons: true,
+    loadingWagons: true,
+  },
+} as const;
+
+type FilterPresetKey = keyof typeof filterPresets;
+
 export const MapFilter = () => {
   const { filters, setFilter, resetFilters, fleetStatus, graph } = useMapStore();
   const [showDescription, setShowDescription] = useState(false);
@@ -56,6 +88,17 @@ export const MapFilter = () => {
     return sum;
   }, 0);
 
+  const enabledStationCount = stationFilterItems.filter(
+    (item) => filters[item.id as keyof typeof filters]
+  ).length;
+
+  const enabledWagonCount = wagonFilterItems.filter(
+    (item) => filters[item.id as keyof typeof filters]
+  ).length;
+
+  const totalEnabledFilters = enabledStationCount + enabledWagonCount;
+  const totalFilterCount = stationFilterItems.length + wagonFilterItems.length;
+
   const toggleAllStations = () => {
     const newValue = !allStationsEnabled;
     stationFilterItems.forEach((item) => {
@@ -70,44 +113,107 @@ export const MapFilter = () => {
     });
   };
 
+  const applyPreset = (presetKey: FilterPresetKey) => {
+    const preset = filterPresets[presetKey];
+    (Object.keys(preset) as Array<keyof typeof preset>).forEach((key) => {
+      setFilter(key, preset[key]);
+    });
+  };
+
+  const isPresetActive = (presetKey: FilterPresetKey): boolean => {
+    const preset = filterPresets[presetKey];
+    return (Object.keys(preset) as Array<keyof typeof preset>).every(
+      (key) => filters[key] === preset[key]
+    );
+  };
+
   return (
-    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200 w-full overflow-hidden">
-      {/* Заголовок з кнопками */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-100">
-        <div>
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Розширені фільтри</h3>
-          <p className="text-[10px] text-slate-400 mt-0.5">Налаштуйте відображення карти</p>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={handleResetFilters}
-            className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
-            title="Скинути всі фільтри"
-          >
-            <RotateCcw size={16} />
-          </button>
+    <div className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/70 shadow-xl backdrop-blur-md">
+      <div className="border-b border-slate-200/80 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Розширені фільтри</h3>
+            <p className="mt-1 text-[11px] text-slate-500">Налаштуйте вміст карти під поточну зміну</p>
+          </div>
           <button
             onClick={() => setIsExpanded((prev) => !prev)}
-            className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
+            className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
             title={isExpanded ? 'Згорнути блок' : 'Розгорнути блок'}
           >
             <ChevronDown size={16} className={`transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
           </button>
         </div>
+
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+            Активно {totalEnabledFilters}/{totalFilterCount}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowDescription((prev) => !prev)}
+              className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100"
+            >
+              {showDescription ? 'Сховати описи' : 'Показати описи'}
+            </button>
+            <button
+              onClick={handleResetFilters}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-800"
+              title="Скинути всі фільтри"
+            >
+              <RotateCcw size={12} />
+              Скинути
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <button
+            onClick={() => applyPreset('operational')}
+            className={`rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+              isPresetActive('operational')
+                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Оперативний
+          </button>
+          <button
+            onClick={() => applyPreset('analytics')}
+            className={`rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+              isPresetActive('analytics')
+                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Аналітика
+          </button>
+          <button
+            onClick={() => applyPreset('all')}
+            className={`rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+              isPresetActive('all')
+                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Все
+          </button>
+        </div>
       </div>
 
       {isExpanded && (
-        <div className="p-4 max-h-[62vh] overflow-y-auto filter-scrollbar space-y-4">
-          {/* СТАНЦІЇ */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between px-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Станції</label>
-              <button
-                onClick={toggleAllStations}
-                className="text-[10px] font-medium text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                {allStationsEnabled ? 'Вимкнути все' : 'Увімкнути все'}
-              </button>
+        <div className="filter-scrollbar max-h-[62vh] space-y-4 overflow-y-auto p-4">
+          <section className="space-y-2 rounded-xl border border-slate-200 bg-white/90 p-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Станції</label>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold text-slate-400">{enabledStationCount}/{stationFilterItems.length}</span>
+                <button
+                  onClick={toggleAllStations}
+                  className="text-[10px] font-semibold uppercase tracking-wide text-blue-600 transition-colors hover:text-blue-700"
+                >
+                  {allStationsEnabled ? 'Вимкнути все' : 'Увімкнути все'}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -117,10 +223,10 @@ export const MapFilter = () => {
                 return (
                   <label
                     key={item.id}
-                    className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all duration-200 group border ${
+                    className={`group flex cursor-pointer items-center gap-3 rounded-lg border p-2.5 transition-all duration-200 ${
                       isEnabled
-                        ? 'border-slate-200/80 bg-white hover:bg-slate-50 hover:border-slate-300'
-                        : 'border-transparent bg-slate-50/60 hover:bg-slate-100/70'
+                        ? 'border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:bg-slate-50'
+                        : 'border-transparent bg-slate-100/70 hover:bg-slate-200/60'
                     }`}
                   >
                     <span className="relative inline-flex h-5 w-5 flex-shrink-0">
@@ -132,100 +238,96 @@ export const MapFilter = () => {
                       />
                       <Check size={14} className="pointer-events-none absolute left-0.5 top-0.5 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
                     </span>
+
                     <span
-                      className={`relative h-3.5 w-3.5 rounded-full flex-shrink-0 transition-all duration-200 group-hover:scale-110 group-active:scale-95 ${
-                        isEnabled ? '' : 'grayscale opacity-60'
+                      className={`relative h-3.5 w-3.5 flex-shrink-0 rounded-full transition-all duration-200 group-hover:scale-110 ${
+                        isEnabled ? '' : 'opacity-60 grayscale'
                       }`}
                       style={{
                         backgroundColor: item.color,
-                        boxShadow: isEnabled ? `0 0 0 1px #ffffff inset, 0 0 8px ${item.color}` : '0 0 0 1px rgba(148,163,184,0.3) inset',
+                        boxShadow: isEnabled ? `0 0 0 1px #ffffff inset, 0 0 9px ${item.color}` : '0 0 0 1px rgba(148,163,184,0.3) inset',
                       }}
-                    >
-                      <span
-                        className={`absolute inset-0 rounded-full transition-opacity duration-200 ${
-                          isEnabled ? 'opacity-100' : 'opacity-0'
-                        }`}
-                        style={{ boxShadow: `0 0 10px ${item.color}` }}
-                      />
-                    </span>
-                    <div className="flex-1 min-w-0">
+                    />
+
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <div className={`text-sm font-medium transition-colors ${isEnabled ? 'text-slate-700 group-hover:text-slate-900' : 'text-slate-500'}`}>
+                        <div className={`text-sm font-semibold transition-colors ${isEnabled ? 'text-slate-700 group-hover:text-slate-900' : 'text-slate-500'}`}>
                           {item.label}
                         </div>
-                        <span className={`text-[11px] font-semibold ${isEnabled ? 'text-slate-400' : 'text-slate-300'}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isEnabled ? 'bg-slate-100 text-slate-500' : 'bg-slate-200/80 text-slate-400'}`}>
                           {stationTypeCounts[item.typeKey] || 0}
                         </span>
                       </div>
                       {showDescription && (
-                        <div className={`text-[10px] mt-0.5 ${isEnabled ? 'text-slate-500' : 'text-slate-400'}`}>{item.description}</div>
+                        <div className={`mt-0.5 text-[10px] ${isEnabled ? 'text-slate-500' : 'text-slate-400'}`}>{item.description}</div>
                       )}
                     </div>
                   </label>
                 );
               })}
             </div>
-          </div>
+          </section>
 
-          {/* Сепаратор */}
-          <div className="h-px bg-slate-100" />
-
-          {/* СТАТУСИ */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between px-2">
+          <section className="space-y-2 rounded-xl border border-slate-200 bg-white/90 p-3">
+            <div className="flex items-center justify-between">
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Статуси парку</label>
-                <p className="text-[10px] text-slate-400 mt-0.5">Показано {visibleWagonCount} з {fleetSummary.totalWagons}</p>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Статуси парку</label>
+                <p className="mt-0.5 text-[10px] text-slate-400">Показано {visibleWagonCount} з {fleetSummary.totalWagons}</p>
               </div>
-              <button
-                onClick={toggleAllWagons}
-                className="text-[10px] font-medium text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                {allWagonsEnabled ? 'Вимкнути все' : 'Увімкнути все'}
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold text-slate-400">{enabledWagonCount}/{wagonFilterItems.length}</span>
+                <button
+                  onClick={toggleAllWagons}
+                  className="text-[10px] font-semibold uppercase tracking-wide text-blue-600 transition-colors hover:text-blue-700"
+                >
+                  {allWagonsEnabled ? 'Вимкнути все' : 'Увімкнути все'}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
-              {wagonFilterItems.map((item) => (
-                <label
-                  key={item.id}
-                  className="flex items-center gap-3 p-2.5 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors group"
-                >
-                  <span className="relative inline-flex h-5 w-5 flex-shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={filters[item.id as keyof typeof filters]}
-                      onChange={(e) => setFilter(item.id as keyof typeof filters, e.target.checked)}
-                      className="peer absolute inset-0 m-0 h-5 w-5 cursor-pointer appearance-none rounded-md border border-slate-300 bg-white transition-all checked:border-blue-600 checked:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
-                    />
-                    <Check size={14} className="pointer-events-none absolute left-0.5 top-0.5 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
-                  </span>
-                  <item.icon size={16} className={`${item.color} group-hover:scale-110 transition-transform flex-shrink-0`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-slate-700 group-hover:text-slate-900">
-                      {item.label}
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
-                      {item.id === 'movingWagons' && `${fleetSummary.moving} у русі`}
-                      {item.id === 'stationaryWagons' && `${fleetSummary.stationary} стоять`}
-                      {item.id === 'loadingWagons' && `${fleetSummary.loading} на завантаженні`}
-                    </div>
-                    {showDescription && (
-                      <div className="text-[10px] text-slate-500 mt-0.5">{item.description}</div>
-                    )}
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
+              {wagonFilterItems.map((item) => {
+                const isEnabled = filters[item.id as keyof typeof filters];
 
-          {/* Кнопка для показу описань */}
-          <button
-            onClick={() => setShowDescription(!showDescription)}
-            className="w-full py-2 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50"
-          >
-            {showDescription ? 'Сховати описи' : 'Показати описи'}
-          </button>
+                return (
+                  <label
+                    key={item.id}
+                    className={`group flex cursor-pointer items-center gap-3 rounded-lg border p-2.5 transition-all duration-200 ${
+                      isEnabled
+                        ? 'border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:bg-slate-50'
+                        : 'border-transparent bg-slate-100/70 hover:bg-slate-200/60'
+                    }`}
+                  >
+                    <span className="relative inline-flex h-5 w-5 flex-shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={isEnabled}
+                        onChange={(e) => setFilter(item.id as keyof typeof filters, e.target.checked)}
+                        className="peer absolute inset-0 m-0 h-5 w-5 cursor-pointer appearance-none rounded-md border border-slate-300 bg-white transition-all checked:border-blue-600 checked:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
+                      />
+                      <Check size={14} className="pointer-events-none absolute left-0.5 top-0.5 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
+                    </span>
+
+                    <item.icon size={16} className={`${item.color} flex-shrink-0 transition-transform group-hover:scale-110`} />
+
+                    <div className="min-w-0 flex-1">
+                      <div className={`text-sm font-semibold ${isEnabled ? 'text-slate-700 group-hover:text-slate-900' : 'text-slate-500'}`}>
+                        {item.label}
+                      </div>
+                      <div className="mt-0.5 text-[10px] text-slate-400">
+                        {item.id === 'movingWagons' && `${fleetSummary.moving} у русі`}
+                        {item.id === 'stationaryWagons' && `${fleetSummary.stationary} стоять`}
+                        {item.id === 'loadingWagons' && `${fleetSummary.loading} на завантаженні`}
+                      </div>
+                      {showDescription && (
+                        <div className="mt-0.5 text-[10px] text-slate-500">{item.description}</div>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </section>
         </div>
       )}
     </div>

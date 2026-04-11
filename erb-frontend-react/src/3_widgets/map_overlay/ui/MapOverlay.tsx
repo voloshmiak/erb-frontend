@@ -1,5 +1,7 @@
 import { useMapStore } from '@/6_shared/model/store';
-import { Crosshair, Layers3 } from 'lucide-react';
+import { Crosshair, Layers3, SlidersHorizontal, X } from 'lucide-react';
+import { MapFilter } from '@/4_features/map_filter/ui/MapFilter';
+import { useState } from 'react';
 
 export const MapOverlay = () => {
   const {
@@ -7,6 +9,7 @@ export const MapOverlay = () => {
     isTerrainEnabled,
     toggleTerrain,
   } = useMapStore();
+  const [isFilterOpen, setIsFilterOpen] = useState(true);
 
   const handleCenterOnMyLocation = () => {
     if (!navigator.geolocation) return;
@@ -25,6 +28,31 @@ export const MapOverlay = () => {
   return (
     <div className="absolute inset-0 pointer-events-none p-6 flex flex-col justify-between z-1000">
       <div />
+
+      <div className="absolute top-6 right-6 z-1200 pointer-events-auto w-full max-w-[320px]">
+        {!isFilterOpen ? (
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            className="ml-auto flex items-center gap-2 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-lg backdrop-blur-sm transition-colors hover:bg-white"
+          >
+            <SlidersHorizontal size={16} />
+            Фільтри
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex justify-end">
+              <button
+                onClick={() => setIsFilterOpen(false)}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white/95 px-2.5 py-1.5 text-xs font-semibold text-slate-600 shadow-sm backdrop-blur-sm transition-colors hover:bg-slate-50 hover:text-slate-800"
+              >
+                <X size={14} />
+                Згорнути
+              </button>
+            </div>
+            <MapFilter />
+          </div>
+        )}
+      </div>
 
       {/* НИЖНЯ ЧАСТИНА: Керування */}
       <div className="flex justify-between items-end pointer-events-none">

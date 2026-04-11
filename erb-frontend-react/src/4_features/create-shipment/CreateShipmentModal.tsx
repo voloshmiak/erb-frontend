@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
+import { orderService, type WagonType, type OrderType } from '../../5_entities/order/api/orderService'; 
 import { X, MapPin, Flag, Calendar, Info, ArrowRight, ChevronDown, User, ShieldCheck, CheckCircle2, Building2 } from 'lucide-react';
-import { orderService, type WagonType } from '../../5_entities/order/api/orderService';
 import { useMapStore } from '@/6_shared/model/store';
 
 interface CreateShipmentModalProps {
@@ -106,7 +106,8 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
         desiredDate: apiDate,
         quantity: parseInt(quantity) || 1, // Відправляємо кількість вагонів
         stationToId: destination,
-        wagonType: cargoType
+        wagonType: cargoType,
+        type: orderType as OrderType,
       });
       
       // Очищення форми

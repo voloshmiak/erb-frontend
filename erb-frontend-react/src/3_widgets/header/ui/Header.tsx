@@ -68,6 +68,9 @@ export const Header = () => {
     orderCreated:       { emoji: '📦', label: 'Нове замовлення',   color: 'text-blue-700',    bg: 'bg-blue-50' },
     assignmentCreated:  { emoji: '🗺', label: 'Маршрут',           color: 'text-cyan-700',    bg: 'bg-cyan-50' },
     orderFulfilled:     { emoji: '✅', label: 'Виконано',           color: 'text-emerald-700', bg: 'bg-emerald-50' },
+    trainCreated:       { emoji: '🚄', label: 'Потяг',              color: 'text-sky-700',     bg: 'bg-sky-50' },
+    trainDispatched:    { emoji: '🚀', label: 'Відправлення потяга',color: 'text-indigo-700',  bg: 'bg-indigo-50' },
+    trainArrived:       { emoji: '🏁', label: 'Прибуття потяга',    color: 'text-orange-700',  bg: 'bg-orange-50' },
   };
   const defaultMeta = { emoji: '🔔', label: 'Подія', color: 'text-slate-600', bg: 'bg-slate-50' };
 

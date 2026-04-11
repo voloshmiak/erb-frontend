@@ -1,7 +1,6 @@
 import { Map, LayoutDashboard, TrainFront, FileText, HelpCircle, BookOpen } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { EmergencyAlertButton } from '@/4_features/emergency_alert/ui/EmergencyAlertButton';
-import { MapFilter } from '@/4_features/map_filter/ui/MapFilter';
 
 const NAV_ITEMS = [
   { icon: Map, label: 'Мап мережі', path: '/' },
@@ -48,10 +47,6 @@ export const Sidebar = () => {
             );
           })}
         </nav>
-
-        <div className="mt-5">
-          <MapFilter />
-        </div>
       </div>
 
       {/* Footer Section */}

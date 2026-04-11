@@ -1,8 +1,10 @@
 export type OrderStatus = 'У дорозі' | 'Очікує' | 'Підтверджено' | 'Доставлено';
+export type OrderType = 'external' | 'internal';
 
 export interface Order {
   id: string;
-  type: string;
+  type: OrderType;
+  wagonType: string;
   date: string;
   from: string;
   to: string;
