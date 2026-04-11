@@ -152,7 +152,7 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-9999 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-237.5 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
         
         <div className="px-8 py-6 flex justify-between items-start border-b border-slate-100">

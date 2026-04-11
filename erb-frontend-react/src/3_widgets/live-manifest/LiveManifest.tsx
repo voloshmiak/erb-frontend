@@ -248,7 +248,7 @@ export const LiveManifest = ({ orders, isLoading, selectedOrderId, onSelectOrder
       )}
 
       {selectedOrder && (
-        <div className="fixed inset-0 z-9999 flex items-start justify-center overflow-y-auto p-4 sm:p-6">
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto p-4 sm:p-6">
           <button
             type="button"
             aria-label="Закрити меню ордера"

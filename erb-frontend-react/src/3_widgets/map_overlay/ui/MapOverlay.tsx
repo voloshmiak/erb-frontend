@@ -9,7 +9,7 @@ export const MapOverlay = () => {
     isTerrainEnabled,
     toggleTerrain,
   } = useMapStore();
-  const [isFilterOpen, setIsFilterOpen] = useState(true);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const handleCenterOnMyLocation = () => {
     if (!navigator.geolocation) return;
@@ -26,10 +26,10 @@ export const MapOverlay = () => {
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none p-6 flex flex-col justify-between z-1000">
+    <div className="absolute inset-0 pointer-events-none p-6 flex flex-col justify-between z-[1000]">
       <div />
 
-      <div className="absolute top-6 right-6 z-1200 pointer-events-auto w-full max-w-[320px]">
+      <div className="absolute top-6 right-6 z-[1200] pointer-events-auto w-full max-w-[320px]">
         {!isFilterOpen ? (
           <button
             onClick={() => setIsFilterOpen(true)}

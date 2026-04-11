@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useMapStore } from '@/6_shared/model/store';
 import { progressFillClass, progressTrackClass } from '@/6_shared/ui/pageStyles';
+import { RailwayMap } from '@/3_widgets/railway_map/ui/RailwayMap';
 
 const TYPE_LABELS: Record<string, string> = {
   gondola: 'Напіввагони',
@@ -11,11 +12,12 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export const CapacityOverview = ({ onManageClick }: { onManageClick?: () => void }) => {
-  const { fleetStatus, fetchFleet } = useMapStore();
+  const { fleetStatus, fetchFleet, fetchGraph } = useMapStore();
 
   useEffect(() => {
     fetchFleet();
-  }, [fetchFleet]);
+    fetchGraph();
+  }, [fetchFleet, fetchGraph]);
 
   const { utilizationRows, availableUnits, maintenanceUnits } = useMemo(() => {
     const byType = fleetStatus?.byType || {};
@@ -64,13 +66,8 @@ export const CapacityOverview = ({ onManageClick }: { onManageClick?: () => void
         <div className="flex flex-col md:flex-row gap-8 items-center">
           
           <div className="w-full md:w-2/3 h-62.5 bg-slate-100 rounded-lg overflow-hidden relative">
-            <div className="absolute inset-0 flex items-center justify-center text-slate-400 bg-[#f8f9fa]">
-              <iframe 
-              src="/map.html" 
-              className="w-full h-full border-none"
-              title="Regional Network Map"
-              scrolling="no" 
-            />
+            <div className="absolute inset-0 bg-[#f8f9fa]">
+              <RailwayMap compact />
             </div>
           </div>
 

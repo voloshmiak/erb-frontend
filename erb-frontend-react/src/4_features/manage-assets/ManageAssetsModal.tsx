@@ -80,7 +80,7 @@ export const ManageAssetsModal = ({ isOpen, onClose }: ManageAssetsModalProps) =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[5000] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
         
         {/* Хедер */}

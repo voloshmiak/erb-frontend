@@ -287,11 +287,15 @@ const createOrderAnimationIcon = (type: 'orderCreated' | 'orderFulfilled' | 'wag
   });
 };
 
-export const RailwayMap = () => {
+interface RailwayMapProps {
+  compact?: boolean;
+}
+
+export const RailwayMap = ({ compact = false }: RailwayMapProps) => {
   const { graph, fleetStatus, wagons, isLoading, filters, selectedStation, setSelectedStation, setSelectedWagon, isTerrainEnabled, assignmentRoutes, stationAnimations } = useMapStore();
   const fleetSummary = summarizeFleetStatus(fleetStatus);
   const [currentZoom, setCurrentZoom] = useState(6);
-  const showStationWagonLabels = currentZoom >= WAGON_LABEL_MIN_ZOOM;
+  const showStationWagonLabels = !compact && currentZoom >= WAGON_LABEL_MIN_ZOOM;
 
   // Авто-видалення анімацій через 15 сек
   useEffect(() => {
@@ -432,7 +436,7 @@ export const RailwayMap = () => {
   };
 
   return (
-    <div className="h-full w-full relative overflow-hidden">
+    <div className="h-full w-full relative z-0 overflow-hidden">
       <MapContainer 
         center={[48.3794, 31.1656]} 
         zoom={6} 
@@ -453,7 +457,7 @@ export const RailwayMap = () => {
           attribution={mapLayer.attribution}
           noWrap={true}
         />
-        <ZoomControl position="bottomright" />
+        {!compact && <ZoomControl position="bottomright" />}
 
   <CountriesOverlay />
 
@@ -558,55 +562,56 @@ export const RailwayMap = () => {
 
       </MapContainer>
 
-      {/* ЛЕГЕНДА */}
-      <div className="absolute bottom-6 right-6 z-401 pointer-events-auto">
-        <div className="bg-white/90 backdrop-blur-sm px-4 py-3 rounded-lg shadow-lg border border-slate-200 text-xs font-medium text-slate-600 space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: STATION_TYPE_COLORS.freight, boxShadow: `0 0 5px ${STATION_TYPE_COLORS.freight}` }} /> 
-            <span>Вантажні ({stationTypeCounts.freight})</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: STATION_TYPE_COLORS.sorting, boxShadow: `0 0 5px ${STATION_TYPE_COLORS.sorting}` }} /> 
-            <span>Сортувальні ({stationTypeCounts.sorting})</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: STATION_TYPE_COLORS.port, boxShadow: `0 0 5px ${STATION_TYPE_COLORS.port}` }} /> 
-            <span>Портові ({stationTypeCounts.port})</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: STATION_TYPE_COLORS.border, boxShadow: `0 0 5px ${STATION_TYPE_COLORS.border}` }} /> 
-            <span>Прикордонні ({stationTypeCounts.border})</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-0.5 bg-blue-400" />
-            <span>Залізничний шлях ({visibleEdges.length})</span>
-          </div>
-          {Object.keys(assignmentRoutes).length > 0 && (
+      {!compact && (
+        <div className="absolute bottom-6 right-6 z-[401] pointer-events-auto">
+          <div className="bg-white/90 backdrop-blur-sm px-4 py-3 rounded-lg shadow-lg border border-slate-200 text-xs font-medium text-slate-600 space-y-2">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-0.5 border-t-2 border-dashed border-red-500" />
-              <span>Маршрути ({Object.keys(assignmentRoutes).length})</span>
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: STATION_TYPE_COLORS.freight, boxShadow: `0 0 5px ${STATION_TYPE_COLORS.freight}` }} /> 
+              <span>Вантажні ({stationTypeCounts.freight})</span>
             </div>
-          )}
-          <div className="pt-2 mt-2 border-t border-slate-100 space-y-1.5 text-slate-700">
-            <div className="flex items-center justify-between gap-4">
-              <span>Парк</span>
-              <span className="font-semibold text-slate-900">{fleetSummary.totalWagons}</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: STATION_TYPE_COLORS.sorting, boxShadow: `0 0 5px ${STATION_TYPE_COLORS.sorting}` }} /> 
+              <span>Сортувальні ({stationTypeCounts.sorting})</span>
             </div>
-            <div className="flex items-center justify-between gap-4 text-slate-500">
-              <span>У русі</span>
-              <span className="font-medium text-blue-700">{fleetSummary.moving}</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: STATION_TYPE_COLORS.port, boxShadow: `0 0 5px ${STATION_TYPE_COLORS.port}` }} /> 
+              <span>Портові ({stationTypeCounts.port})</span>
             </div>
-            <div className="flex items-center justify-between gap-4 text-slate-500">
-              <span>На завантаженні</span>
-              <span className="font-medium text-amber-600">{fleetSummary.loading}</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: STATION_TYPE_COLORS.border, boxShadow: `0 0 5px ${STATION_TYPE_COLORS.border}` }} /> 
+              <span>Прикордонні ({stationTypeCounts.border})</span>
             </div>
-            <div className="flex items-center justify-between gap-4 text-slate-500">
-              <span>Стоять / обслуговування</span>
-              <span className="font-medium text-rose-600">{fleetSummary.stationary}</span>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-0.5 bg-blue-400" />
+              <span>Залізничний шлях ({visibleEdges.length})</span>
+            </div>
+            {Object.keys(assignmentRoutes).length > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-0.5 border-t-2 border-dashed border-red-500" />
+                <span>Маршрути ({Object.keys(assignmentRoutes).length})</span>
+              </div>
+            )}
+            <div className="pt-2 mt-2 border-t border-slate-100 space-y-1.5 text-slate-700">
+              <div className="flex items-center justify-between gap-4">
+                <span>Парк</span>
+                <span className="font-semibold text-slate-900">{fleetSummary.totalWagons}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4 text-slate-500">
+                <span>У русі</span>
+                <span className="font-medium text-blue-700">{fleetSummary.moving}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4 text-slate-500">
+                <span>На завантаженні</span>
+                <span className="font-medium text-amber-600">{fleetSummary.loading}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4 text-slate-500">
+                <span>Стоять / обслуговування</span>
+                <span className="font-medium text-rose-600">{fleetSummary.stationary}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
