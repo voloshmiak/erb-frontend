@@ -1,6 +1,7 @@
 const BASE_URL = 'https://erb-backend-762050733390.europe-central2.run.app/api';
 
 export type WagonType = 'gondola' | 'grain_hopper' | 'cement_hopper';
+export type OrderType = 'external' | 'internal';
 
 export interface CreateOrderDto {
   clientName: string;
@@ -8,6 +9,7 @@ export interface CreateOrderDto {
   quantity: number;
   stationToId: string;
   wagonType: WagonType;
+  type: OrderType;
 }
 
 export const orderService = {

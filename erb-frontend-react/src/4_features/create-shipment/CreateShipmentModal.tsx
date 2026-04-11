@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { X, MapPin, Flag, Calendar, Info, Save, ArrowRight, ChevronDown, User } from 'lucide-react';
-import { orderService, type WagonType } from '../../5_entities/order/api/orderService';
+import { X, MapPin, Flag, Calendar, Info, Save, ArrowRight, ChevronDown, User, ShieldCheck } from 'lucide-react';
+import { orderService, type WagonType, type OrderType } from '../../5_entities/order/api/orderService';
 import { useMapStore } from '@/6_shared/model/store';
 
 interface CreateShipmentModalProps {
@@ -9,6 +9,7 @@ interface CreateShipmentModalProps {
 }
 
 export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProps) => {
+  const [orderType, setOrderType] = useState<OrderType>('external');
   const [clientName, setClientName] = useState('');
   const [cargoType, setCargoType] = useState<WagonType>('gondola');
   const [origin, setOrigin] = useState('');
@@ -69,11 +70,12 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
 
     try {
       await orderService.createOrder({
-        clientName: clientName, 
+        clientName: orderType === 'internal' ? 'Internal' : clientName, 
         desiredDate: apiDate,
         quantity: 1, 
         stationToId: destination,
-        wagonType: cargoType
+        wagonType: cargoType,
+        type: orderType
       });
       
       setClientName(''); 
@@ -115,17 +117,47 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
                 <div className="w-6 h-6 rounded-full bg-[#0052cc] text-white flex items-center justify-center text-xs font-bold">1</div>
                 <h3 className="font-bold text-slate-900">Деталі вантажу та клієнта</h3>
               </div>
+
+              <div className="pl-9 mb-6">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Тип замовлення</label>
+                <div className="flex bg-slate-100 p-1 rounded-lg w-fit">
+                  <button 
+                    onClick={() => {
+                      setOrderType('external');
+                      if (clientName === 'Internal') setClientName('');
+                    }} 
+                    className={`px-4 py-2 text-xs font-bold rounded-md transition-colors ${orderType === 'external' ? 'text-[#0052cc] bg-white shadow-sm border border-[#0052cc]/20' : 'text-slate-500 hover:bg-slate-200'}`}
+                  >
+                    ЗОВНІШНЄ
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setOrderType('internal');
+                      setClientName('Internal');
+                    }} 
+                    className={`px-4 py-2 text-xs font-bold rounded-md transition-colors ${orderType === 'internal' ? 'text-[#0052cc] bg-white shadow-sm border border-[#0052cc]/20' : 'text-slate-500 hover:bg-slate-200'}`}
+                  >
+                    ВНУТРІШНЄ
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4 pl-9 mb-4">
                 <div className="col-span-2">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Назва компанії / Замовник <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    {orderType === 'internal' ? (
+                      <ShieldCheck className="w-4 h-4 text-[#0052cc] absolute left-3 top-1/2 -translate-y-1/2" />
+                    ) : (
+                      <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    )}
                     <input 
                       type="text" 
-                      value={clientName} 
+                      value={orderType === 'internal' ? 'Внутрішня логістика (Internal)' : clientName} 
                       onChange={(e) => setClientName(e.target.value)} 
-                      placeholder="Введіть назву компанії..." 
-                      className="w-full bg-slate-100 border-none rounded-lg pl-10 pr-4 py-3 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-[#0052cc]/20 outline-none" 
+                      disabled={orderType === 'internal'}
+                      placeholder={orderType === 'internal' ? '' : "Введіть назву компанії..."} 
+                      className={`w-full border-none rounded-lg pl-10 pr-4 py-3 text-sm font-medium outline-none transition-colors ${orderType === 'internal' ? 'bg-blue-50 text-blue-900' : 'bg-slate-100 text-slate-700 focus:ring-2 focus:ring-[#0052cc]/20'}`} 
                     />
                   </div>
                 </div>

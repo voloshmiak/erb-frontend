@@ -4,8 +4,21 @@ import { stationApi } from '@/5_entities/station/api/station-api';
 import { fleetApi, type FleetStatusSummary } from '@/5_entities/station/api/fleet-api';
 import type { Wagon } from '@/5_entities/wagon/type';
 import { apiClient } from '@/6_shared/api/api-client';
+import type { Train } from '@/5_entities/train/model/type';
+import { trainService } from '@/5_entities/train/api/trainService';
 
-export type EventType = "orderCreated" | "wagonMoved" | "wagonArrived" | "assignmentCreated" | "wagonDispatched" | "orderFulfilled" | "wagonUnloaded" | "simTick";
+export type EventType = 
+  | "orderCreated" 
+  | "wagonMoved" 
+  | "wagonArrived" 
+  | "assignmentCreated" 
+  | "wagonDispatched" 
+  | "orderFulfilled" 
+  | "wagonUnloaded" 
+  | "simTick"
+  | "trainCreated"
+  | "trainDispatched"
+  | "trainArrived";
 
 const EVENT_TYPES: EventType[] = [
   'orderCreated',
@@ -16,6 +29,9 @@ const EVENT_TYPES: EventType[] = [
   'orderFulfilled',
   'wagonUnloaded',
   'simTick',
+  'trainCreated',
+  'trainDispatched',
+  'trainArrived',
 ];
 
 const EVENT_TYPES_SET = new Set<string>(EVENT_TYPES);
@@ -69,6 +85,16 @@ const resolveEventMessage = (type: EventType, payload: Record<string, unknown>):
       const hour = Number(payload.currentHour) || 0;
       return `Симуляція: година ${hour}`;
     }
+    case 'trainCreated': {
+      const wCount = Array.isArray(payload.wagonIds) ? payload.wagonIds.length : 0;
+      return `Сформовано потяг (${wCount} ваг.)`;
+    }
+    case 'trainDispatched': {
+      return `Потяг відправлено в рейс`;
+    }
+    case 'trainArrived': {
+      return `Потяг прибув у пункт призначення`;
+    }
     default:
       return 'Системна подія';
   }
@@ -121,6 +147,7 @@ interface MapState {
   graph: RailwayGraph | null;
   fleetStatus: FleetStatusSummary | null;
   wagons: Wagon[];
+  trains: Train[];
   selectedWagon: Wagon | null;
   eventLog: MapEvent[];
   unreadCount: number;
@@ -138,6 +165,7 @@ interface MapState {
 
   fetchGraph: () => Promise<void>;
   fetchFleet: () => Promise<void>;
+  fetchTrains: () => Promise<void>;
   fetchSimulation: () => Promise<void>;
   addEvent: (event: MapEvent) => void;
   setFilter: (key: keyof MapFilters, value: boolean) => void;
@@ -153,11 +181,13 @@ interface MapState {
 }
 
 const WAGON_EVENTS = new Set<EventType>(['wagonMoved', 'wagonArrived', 'wagonDispatched', 'wagonUnloaded']);
+const TRAIN_EVENTS = new Set<EventType>(['trainCreated', 'trainDispatched', 'trainArrived']);
 
 export const useMapStore = create<MapState>((set, get) => ({
   graph: null,
   fleetStatus: null,
   wagons: [],
+  trains: [],
   selectedWagon: null,
   eventLog: [],
   unreadCount: 0,
@@ -394,6 +424,10 @@ export const useMapStore = create<MapState>((set, get) => ({
         if (WAGON_EVENTS.has(type)) {
           get().fetchFleet();
         }
+        if (TRAIN_EVENTS.has(type)) {
+          get().fetchTrains();
+          get().fetchFleet(); // status 'in_train' changes fleet
+        }
       } catch {
         // не JSON рядок — пропускаємо
       }
@@ -477,6 +511,16 @@ export const useMapStore = create<MapState>((set, get) => ({
       set({ fleetStatus: data, wagons: data.wagons || [] });
     } catch (error) {
       console.error('❌ Store fetchFleet error:', error);
+    }
+  },
+
+  fetchTrains: async () => {
+    try {
+      console.log('🚄 Starting fetchTrains...');
+      const data = await trainService.getTrains();
+      set({ trains: data });
+    } catch (error) {
+      console.error('❌ Store fetchTrains error:', error);
     }
   },
 

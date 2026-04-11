@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Clock, CheckCircle2, Filter, Download, ChevronLeft, ChevronRight, ArrowRight, X } from 'lucide-react';
 import type { FormattedOrder } from '@/5_entities/order/api/useLiveOrders';
-import { pageStyles } from '@/6_shared/ui/pageStyles';
 
 type LiveManifestProps = {
   orders: FormattedOrder[];
