@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Bell, Settings, User, X, LocateFixed, MapPinned, SlidersHorizontal, RotateCcw } from 'lucide-react';
+import { Search, Bell, Settings, User, X, LocateFixed, MapPinned, SlidersHorizontal, RotateCcw, Clock } from 'lucide-react';
 import { useMapStore } from '@/6_shared/model/store';
 import type { Station } from '@/5_entities/station/model/type';
 import type { Wagon } from '@/5_entities/wagon/type';
