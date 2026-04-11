@@ -1,11 +1,66 @@
 // import React from 'react';
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Polyline, Marker, Tooltip, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, Tooltip, useMap, useMapEvents, ZoomControl, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
+import type { Feature, GeoJsonObject } from 'geojson';
 import { useMapStore } from '@/6_shared/model/store';
 import { summarizeFleetStatus } from '@/6_shared/lib/utils';
 import { MapController } from './MapController';
 import 'leaflet/dist/leaflet.css';
+
+const CountriesOverlay = () => {
+  const [geoData, setGeoData] = useState<GeoJsonObject | null>(null);
+
+  useEffect(() => {
+    // Завантажуємо світові кордони з публічного джерела
+    fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
+      .then(res => res.json())
+      .then(data => setGeoData(data))
+      .catch(err => console.error('Error loading countries:', err));
+  }, []);
+
+  const styleCountry = (feature?: Feature) => {
+    if (!feature) {
+      return {
+        fillColor: '#d1d5db',
+        fillOpacity: 0.75,
+        stroke: true,
+        color: '#9ca3af',
+        weight: 1,
+        opacity: 0.5,
+      };
+    }
+
+    const countryName = feature.properties?.name || feature.properties?.ADMIN || '';
+    
+    // Делаємо Україну прозорою (вона не матиме маски)
+    if (countryName.includes('Ukraine') || countryName.includes('Україна')) {
+      return {
+        fillOpacity: 0,
+        stroke: false,
+      };
+    }
+    
+    return {
+      fillColor: '#d1d5db',
+      fillOpacity: 0.75,
+      stroke: true,
+      color: '#9ca3af',
+      weight: 1,
+      opacity: 0.5,
+    };
+  };
+
+  if (!geoData) return null;
+
+  return (
+    <GeoJSON 
+      data={geoData}
+      style={styleCountry}
+      interactive={false}
+    />
+  );
+};
 
 const UKRAINE_BOUNDS = L.latLngBounds([
   [40.75, 22.0],
@@ -54,13 +109,13 @@ const getStationEntityId = (station: { stationId?: string }): string => {
   return fallback;
 };
 
-const escapeHtml = (text: string): string =>
-  text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+// const escapeHtml = (text: string): string =>
+//   text
+//     .replace(/&/g, '&amp;')
+//     .replace(/</g, '&lt;')
+//     .replace(/>/g, '&gt;')
+//     .replace(/"/g, '&quot;')
+//     .replace(/'/g, '&#039;');
 
 const WAGON_TYPE_ICONS: Record<string, string> = {
   gondola:       '🪣',
@@ -249,7 +304,8 @@ export const RailwayMap = () => {
       const remaining = Math.max(0, ANIMATION_DURATION - elapsed);
       return setTimeout(() => {
         useMapStore.setState((state) => {
-          const { [id]: _, ...rest } = state.stationAnimations;
+          const { [id]: unused, ...rest } = state.stationAnimations;
+          void unused;
           return { stationAnimations: rest };
         });
       }, remaining);
@@ -399,6 +455,8 @@ export const RailwayMap = () => {
         />
         <ZoomControl position="bottomright" />
 
+  <CountriesOverlay />
+
         <DragLimitComponent />
         <ZoomWatcher onZoomChange={setCurrentZoom} />
         <MapController />
@@ -415,11 +473,14 @@ export const RailwayMap = () => {
             <Polyline 
               key={`edge-${idx}`} 
               positions={[start, end]} 
-              color="#002e7e" 
-              weight={1.4} 
-              opacity={0.75}
-              lineCap="round"
-              lineJoin="round"
+              pathOptions={{
+                color: '#002e7e',
+                weight: 1.4,
+                opacity: 0.75,
+                dashArray: '15 12',
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
               interactive={false}
             />
           );

@@ -1,15 +1,23 @@
 import { Map, LayoutDashboard, TrainFront, FileText, HelpCircle, BookOpen } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { EmergencyAlertButton } from '@/4_features/emergency_alert/ui/EmergencyAlertButton';
 import { MapFilter } from '@/4_features/map_filter/ui/MapFilter';
 
 const NAV_ITEMS = [
-  { icon: Map, label: 'Мапа мережі' },
-  { icon: LayoutDashboard, label: 'Панель керування' },
-  { icon: TrainFront, label: 'Парк', active: true },
-  { icon: FileText, label: 'Логістичні звіти' },
+  { icon: Map, label: 'Мап мережі', path: '/' },
+  { icon: LayoutDashboard, label: 'Панель керування', path: '/dashboard' },
+  { icon: TrainFront, label: 'Парк', path: '/fleet' },
+  { icon: FileText, label: 'Логістичні звіти', path: '/reports' },
 ];
 
 export const Sidebar = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleNavClick = (path: string) => {
+    navigate(path);
+  };
+
   return (
     <aside className="w-64 h-full bg-[#edf1f7] border-r border-slate-200/90 flex flex-col p-4 justify-between">
       <div>
@@ -21,19 +29,24 @@ export const Sidebar = () => {
 
         {/* Navigation */}
         <nav className="space-y-1">
-          {NAV_ITEMS.map((item) => (
-            <div 
-              key={item.label} 
-              className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-all ${
-                item.active 
-                  ? 'bg-white shadow-sm text-blue-600 border border-slate-100' 
-                  : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900'
-              }`}
-            >
-              <item.icon size={18} />
-              <span className="text-sm font-semibold">{item.label}</span>
-            </div>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <button
+                key={item.label}
+                onClick={() => handleNavClick(item.path)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-all ${
+                  isActive
+                    ? 'bg-white shadow-sm border'
+                    : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+                }`}
+                style={isActive ? { color: '#002e7e', borderColor: '#002e7e' } : {}}
+              >
+                <item.icon size={18} />
+                <span className="text-sm font-semibold">{item.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="mt-5">
