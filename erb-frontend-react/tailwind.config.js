@@ -62,6 +62,7 @@ export default {
         "label": ["Inter", "sans-serif"]
       }
     },
+    extend: {},
   },
   plugins: [],
 }

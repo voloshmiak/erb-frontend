@@ -1,9 +1,6 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
-
-@custom-variant dark (&:is(.dark *));
+/* @plugin "tailwindcss-animate"; */
+/* @custom-variant dark (&:is(.dark *)); */
 
 :root {
   --color-brand-beige: #F3EDE4;
@@ -43,47 +40,49 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-@theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+@layer base {
+  :root {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Geist Variable', sans-serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+  }
 }
 
 .dark {
@@ -122,12 +121,224 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--color-border);
+    outline-color: var(--color-ring);
+    outline-offset: -2px;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-sans);
   }
+}
+
+/* Анімація руху поїздів по лініях */
+.railway-line {
+  stroke-dasharray: 10, 10;
+  animation: dash 20s linear infinite;
+  filter: drop-shadow(0 0 3px rgba(59, 130, 246, 0.5)); /* Легке світіння */
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+
+/* Ефект пульсації для вузлів станцій */
+.station-pulse {
+  width: 16px;
+  height: 16px;
+  background-color: var(--station-color, #002e7e);
+  border: 2.5px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--station-color, #002e7e) 80%, transparent);
+  animation: none;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--station-color, #002e7e) 70%, transparent);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--station-color, #002e7e) 0%, transparent);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--station-color, #002e7e) 0%, transparent);
+  }
+}
+
+/* Скролбар для панелі фільтрів */
+.filter-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 transparent;
+}
+
+.filter-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.filter-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.filter-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.filter-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #64748b 0%, #475569 100%);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* Кнопки зуму біля легенди карти */
+.leaflet-top.leaflet-left .leaflet-control-zoom {
+  display: none !important;
+}
+
+.leaflet-control-zoom.leaflet-top {
+  display: none !important;
+}
+
+.railway-map-canvas .leaflet-bottom.leaflet-right .leaflet-control-zoom {
+  margin-right: 1.5rem;
+  margin-bottom: 9.6rem;
+  border: 1px solid #cfd7e5;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+}
+
+.railway-map-canvas .leaflet-control-zoom a {
+  width: 36px;
+  height: 36px;
+  line-height: 34px;
+  color: #334155;
+  background: #f8fafc;
+  border-bottom: 1px solid #dbe3f0;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.railway-map-canvas .leaflet-control-zoom a:last-child {
+  border-bottom: none;
+}
+
+.railway-map-canvas .leaflet-control-zoom a:hover {
+  background: #e9eff8;
+  color: #002e7e;
+}
+
+/* Анімований пунктир маршруту призначення */
+.assignment-route-animated {
+  animation: none;
+}
+.assignment-route-animated path {
+  stroke-dashoffset: 0;
+  animation: dashMove 1s linear infinite;
+}
+@keyframes dashMove {
+  to { stroke-dashoffset: -18; }
+}
+
+/* Анімація кільця — нове замовлення (оранжевий пульс) */
+.order-created-ring {
+  pointer-events: none;
+}
+.order-created-ring .ring-inner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #f97316;
+  animation: orderPulse 1.8s ease-out infinite;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+.order-created-ring .ring-outer {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #f97316;
+  animation: orderPulse 1.8s ease-out infinite 0.6s;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+}
+@keyframes orderPulse {
+  0% { width: 20px; height: 20px; opacity: 0.9; border-width: 3px; }
+  100% { width: 70px; height: 70px; opacity: 0; border-width: 1px; }
+}
+
+/* Анімація кільця — замовлення виконано (зелений спалах) */
+.order-fulfilled-ring {
+  pointer-events: none;
+}
+.order-fulfilled-ring .ring-inner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+  animation: fulfilledPulse 2s ease-out infinite;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+.order-fulfilled-ring .ring-check {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  animation: fulfilledFade 2s ease-out infinite;
+}
+@keyframes fulfilledPulse {
+  0% { width: 16px; height: 16px; opacity: 1; background: rgba(34, 197, 94, 0.3); }
+  50% { width: 50px; height: 50px; opacity: 0.6; background: rgba(34, 197, 94, 0.05); }
+  100% { width: 70px; height: 70px; opacity: 0; background: transparent; }
+}
+@keyframes fulfilledFade {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  60% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+}
+
+/* Анімація розвантаження вагону (бурштиновий пульс, 3 рази) */
+.wagon-unloaded-ring {
+  pointer-events: none;
+}
+.wagon-unloaded-ring .ring-inner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.2);
+  animation: unloadPulse 1.4s ease-out 3;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+.wagon-unloaded-ring .ring-outer {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #f59e0b;
+  animation: unloadPulse 1.4s ease-out 3 0.5s;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+}
+@keyframes unloadPulse {
+  0% { width: 14px; height: 14px; opacity: 0.9; border-width: 3px; }
+  100% { width: 52px; height: 52px; opacity: 0; border-width: 1px; }
 }
