@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom'; // ДОДАНО ІМПОРТ LINK
 import { LiveManifest } from '../../3_widgets/live-manifest/LiveManifest';
 import { CapacityOverview } from '../../3_widgets/capacity-overview/CapacityOverview';
 import { CreateShipmentModal } from '../../4_features/create-shipment/CreateShipmentModal';
@@ -29,11 +30,20 @@ export const DashboardPage = () => {
           <div className="text-xs text-slate-500">Київська центральна станція</div>
         </div>
 
+        {/* НАВІГАЦІЯ ЗА ДОПОМОГОЮ REACT ROUTER */}
         <nav className="flex-1 px-4 py-2 space-y-1">
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors"><Map className="w-5 h-5" /> Мап мережі</a>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-[#0f2e5a] bg-white border border-[#0f2e5a]/20 rounded-lg shadow-sm transition-colors"><LayoutDashboard className="w-5 h-5" /> Панель керування</a>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors"><Train className="w-5 h-5" /> Парк</a>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors"><FileText className="w-5 h-5" /> Логістичні звіти</a>
+          <Link to="/" className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">
+            <Map className="w-5 h-5" /> Мап мережі
+          </Link>
+          <Link to="/dashboard" className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-[#0f2e5a] bg-white border border-[#0f2e5a]/20 rounded-lg shadow-sm transition-colors">
+            <LayoutDashboard className="w-5 h-5" /> Панель керування
+          </Link>
+          <Link to="/fleet" className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">
+            <Train className="w-5 h-5" /> Парк
+          </Link>
+          <Link to="/reports" className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">
+            <FileText className="w-5 h-5" /> Логістичні звіти
+          </Link>
         </nav>
 
         <div className="p-4 space-y-4 mb-4">

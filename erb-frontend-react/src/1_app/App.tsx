@@ -1,14 +1,9 @@
-import { DashboardPage } from "../2_pages/dashboard/DashboardPage";
-
-function App() {
-  return <DashboardPage />;
-}
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 import './App.css'; 
 import 'leaflet/dist/leaflet.css'; 
 import { DispatcherHubPage } from '@/2_pages/dispetcher_hub/ui/DispatcherHubPage';
-import { DashboardPage } from '@/2_pages/dashboard/ui/DashboardPage';
+import { DashboardPage } from '@/2_pages/dashboard/DashboardPage';
 import { FleetPage } from '@/2_pages/fleet/ui/FleetPage';
 import { ReportsPage } from '@/2_pages/reports/ui/ReportsPage';
 import { OperationsPage } from '@/2_pages/operations/ui/OperationsPage';
