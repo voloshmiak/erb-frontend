@@ -23,7 +23,7 @@ export const MapOverlay = () => {
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none p-6 flex flex-col justify-between z-[1000]">
+    <div className="absolute inset-0 pointer-events-none p-6 flex flex-col justify-between z-1000">
       <div />
 
       {/* НИЖНЯ ЧАСТИНА: Керування */}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { LiveManifest } from '../../3_widgets/live-manifest/LiveManifest';
 import { CapacityOverview } from '../../3_widgets/capacity-overview/CapacityOverview';
 import { CreateShipmentModal } from '../../4_features/create-shipment/CreateShipmentModal';

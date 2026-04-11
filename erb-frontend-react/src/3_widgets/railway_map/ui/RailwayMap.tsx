@@ -559,7 +559,7 @@ export const RailwayMap = () => {
       </MapContainer>
 
       {/* ЛЕГЕНДА */}
-      <div className="absolute bottom-6 right-6 z-[401] pointer-events-auto">
+      <div className="absolute bottom-6 right-6 z-401 pointer-events-auto">
         <div className="bg-white/90 backdrop-blur-sm px-4 py-3 rounded-lg shadow-lg border border-slate-200 text-xs font-medium text-slate-600 space-y-2">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: STATION_TYPE_COLORS.freight, boxShadow: `0 0 5px ${STATION_TYPE_COLORS.freight}` }} /> 

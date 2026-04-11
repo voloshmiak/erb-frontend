@@ -232,7 +232,7 @@ export const Header = () => {
   };
 
   return (
-    <header className="relative h-16 bg-[#f3f6fb] border-b border-slate-200/90 flex items-center justify-between px-6 z-[3000]">
+    <header className="relative h-16 bg-[#f3f6fb] border-b border-slate-200/90 flex items-center justify-between px-6 z-3000">
       <div className="flex items-center gap-8">
         <div className="font-bold text-lg tracking-tight cursor-pointer" style={{ color: '#002e7e' }}>
           УЗ Логістика
@@ -350,7 +350,7 @@ export const Header = () => {
           </div>
 
           {showSuggestions && hasSearchText && (
-            <div className="absolute top-full mt-2 left-0 right-0 bg-white border border-slate-200 shadow-lg rounded-xl overflow-hidden z-[3100]">
+            <div className="absolute top-full mt-2 left-0 right-0 bg-white border border-slate-200 shadow-lg rounded-xl overflow-hidden z-3100">
               {searchSuggestions.length > 0 ? (
                 searchSuggestions.map((suggestion, idx) => (
                   <button
@@ -441,7 +441,7 @@ export const Header = () => {
           </div>
 
           {activeMenu === 'notifications' && (
-            <div className="absolute right-0 top-full mt-3 w-96 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-[3200]">
+            <div className="absolute right-0 top-full mt-3 w-96 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-3200">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Сповіщення</p>
@@ -458,13 +458,13 @@ export const Header = () => {
                     return (
                       <div key={event.id} className="px-4 py-2.5 border-b border-slate-50 last:border-b-0 hover:bg-slate-50/80 transition-colors">
                         <div className="flex items-start gap-2.5">
-                          <span className="text-base mt-0.5 flex-shrink-0">{meta.emoji}</span>
+                          <span className="text-base mt-0.5 shrink-0">{meta.emoji}</span>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2 mb-0.5">
                               <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full ${meta.bg} ${meta.color}`}>
                                 {meta.label}
                               </span>
-                              <span className="text-[10px] text-slate-400 flex-shrink-0">
+                              <span className="text-[10px] text-slate-400 shrink-0">
                                 {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                               </span>
                             </div>
@@ -485,7 +485,7 @@ export const Header = () => {
           )}
 
           {activeMenu === 'settings' && (
-            <div className="absolute right-0 top-full mt-3 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-[3200]">
+            <div className="absolute right-0 top-full mt-3 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-3200">
               <div className="px-4 py-3 border-b border-slate-100">
                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Налаштування карти</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">Швидкі дії для мапи та фільтрів</p>
@@ -528,7 +528,7 @@ export const Header = () => {
           )}
 
           {activeMenu === 'profile' && (
-            <div className="absolute right-0 top-full mt-3 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-[3200]">
+            <div className="absolute right-0 top-full mt-3 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-3200">
               <div className="px-4 py-3 border-b border-slate-100">
                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Профіль</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">AV · черговий диспетчер</p>

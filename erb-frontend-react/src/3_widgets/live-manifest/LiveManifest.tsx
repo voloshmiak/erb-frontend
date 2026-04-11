@@ -1,7 +1,11 @@
-import { useState } from 'react';
-import { Clock, CheckCircle2, Filter, Download, ChevronLeft, ChevronRight, ArrowRight, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { 
+  Clock, CheckCircle2, Filter, Download, 
+  ChevronLeft, ChevronRight, ArrowRight, X,
+  ArrowUpDown, ArrowUp, ArrowDown 
+} from 'lucide-react';
 import type { FormattedOrder } from '@/5_entities/order/api/useLiveOrders';
-import { pageStyles } from '@/6_shared/ui/pageStyles';
+import { useMapStore } from '@/6_shared/model/store'; 
 
 type LiveManifestProps = {
   orders: FormattedOrder[];
@@ -27,24 +31,73 @@ const statusBadge = (status: string) => {
   }
 };
 
-// Приймаємо дані з пропсів, а не вантажимо самі
+// Допоміжна функція для парсингу дати (обробляє і ISO, і DD/MM/YYYY)
+const parseDateValue = (dateStr: string): number => {
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return d.getTime();
+  const parts = dateStr.split('/');
+  if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
+  return 0;
+};
+
+// Допоміжна функція для красивого відображення дати
+const formatDateDisplay = (dateStr: string): string => {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+};
+
 export const LiveManifest = ({ orders, isLoading, selectedOrderId, onSelectOrder }: LiveManifestProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('Всі');
+  
+  // Стейт для сортування: за замовчуванням 'desc' (від найновіших)
+  const [sortConfig, setSortConfig] = useState<{ key: 'date', direction: 'asc' | 'desc' } | null>({ key: 'date', direction: 'desc' });
+  
   const itemsPerPage = 10;
 
-  // 1. Фільтрація
-  const filteredOrders = orders.filter(order => statusFilter === 'Всі' || order.status === statusFilter);
-  
-  // 2. Пагінація
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
-  const currentOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const { graph } = useMapStore();
+  const stations = graph?.stations || [];
 
-  // 3. Експорт у CSV
+  const getStationName = (val: string | undefined | null) => {
+    if (!val || val === '---') return '---'; 
+    const station = stations.find(s => s.stationId === val);
+    return station ? station.name : val; 
+  };
+
+  // Фільтрація та Сортування
+  const processedOrders = useMemo(() => {
+    let result = [...orders];
+
+    // Фільтрація
+    if (statusFilter !== 'Всі') {
+      result = result.filter(order => order.status === statusFilter);
+    }
+
+    // Сортування
+    if (sortConfig?.key === 'date') {
+      result.sort((a, b) => {
+        const dateA = parseDateValue(a.date);
+        const dateB = parseDateValue(b.date);
+        return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+      });
+    }
+
+    return result;
+  }, [orders, statusFilter, sortConfig]);
+  
+  // Пагінація
+  const totalPages = Math.ceil(processedOrders.length / itemsPerPage);
+  const currentOrders = processedOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  // Експорт у CSV 
   const handleExportCSV = () => {
     const headers = ['ID', 'Тип', 'Дата', 'Звідки', 'Куди', 'Статус'];
-    const csvContent = filteredOrders.map(o => `${o.id},${o.type},${o.date},${o.from},${o.to},${o.status}`).join('\n');
-    // Додаємо BOM (\uFEFF) для коректного відображення кирилиці в Excel
+    const csvContent = processedOrders.map(o => `${o.id},${o.type},${formatDateDisplay(o.date)},${getStationName(o.from)},${getStationName(o.to)},${o.status}`).join('\n');
     const blob = new Blob(['\uFEFF' + headers.join(',') + '\n' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -52,14 +105,22 @@ export const LiveManifest = ({ orders, isLoading, selectedOrderId, onSelectOrder
     link.click();
   };
 
-  const selectedOrder = filteredOrders.find((order) => order.id === selectedOrderId) || null;
+  // Хендлер кліку по колонці "Дата"
+  const handleSortDate = () => {
+    setSortConfig(current => {
+      if (current?.direction === 'desc') return { key: 'date', direction: 'asc' };
+      return { key: 'date', direction: 'desc' };
+    });
+    setCurrentPage(1); // Скидаємо на першу сторінку при сортуванні
+  };
+
+  const selectedOrder = processedOrders.find((order) => order.id === selectedOrderId) || null;
 
   return (
     <div className="relative bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
       <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white">
         <h2 className="text-xl font-bold text-slate-900">Журнал перевезень</h2>
         <div className="flex gap-4">
-          {/* Фільтр */}
           <div className="relative">
             <Filter className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <select 
@@ -74,7 +135,6 @@ export const LiveManifest = ({ orders, isLoading, selectedOrderId, onSelectOrder
               <option value="Доставлено">Доставлені</option>
             </select>
           </div>
-          {/* Експорт */}
           <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
             <Download className="w-4 h-4" /> Експорт
           </button>
@@ -89,42 +149,72 @@ export const LiveManifest = ({ orders, isLoading, selectedOrderId, onSelectOrder
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <th className="px-8 py-4 w-[20%]">ID Запиту</th>
-                  <th className="px-8 py-4 w-[20%]">Дата</th>
-                  <th className="px-8 py-4 w-[30%]">Маршрут</th>
+                  <th className="px-8 py-4 w-[25%]">ID Запиту</th>
+                  
+                  {/* Колонка "Дата" тепер клікабельна з іконкою сортування */}
+                  <th 
+                    onClick={handleSortDate}
+                    className="px-8 py-4 w-[15%] cursor-pointer hover:bg-slate-100/70 transition-colors group select-none"
+                    title="Натисніть для сортування"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      ДАТА
+                      <span className="text-slate-400">
+                        {sortConfig?.direction === 'desc' ? (
+                          <ArrowDown className="w-3.5 h-3.5 text-[#0052cc]" />
+                        ) : sortConfig?.direction === 'asc' ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-[#0052cc]" />
+                        ) : (
+                          <ArrowUpDown className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </span>
+                    </div>
+                  </th>
+                  
+                  <th className="px-8 py-4 w-[40%]">Маршрут</th>
                   <th className="px-8 py-4 w-[20%]">Статус</th>
                 </tr>
               </thead>
               <tbody>
-                {currentOrders.map((order) => (
-                  <tr
-                    key={order.id}
-                    onClick={() => onSelectOrder(order.id)}
-                    className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer ${selectedOrder?.id === order.id ? 'bg-blue-50/40' : ''}`}
-                  >
-                    <td className="px-8 py-4">
-                      <div className="font-bold text-slate-900">{order.id}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">{order.type}</div>
-                    </td>
-                    <td className="px-8 py-4 text-sm font-medium text-slate-600">{order.date}</td>
-                    <td className="px-8 py-4">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                        <span className="font-bold">{order.from}</span>
-                        <span className="text-slate-300">→</span>
-                        <span className="font-bold">{order.to}</span>
-                      </div>
-                    </td>
-                    <td className="px-8 py-4">{statusBadge(order.status)}</td>
-                  </tr>
-                ))}
+                {currentOrders.map((order) => {
+                  const fromName = getStationName(order.from);
+                  const toName = getStationName(order.to);
+                  
+                  return (
+                    <tr
+                      key={order.id}
+                      onClick={() => onSelectOrder(order.id)}
+                      className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer ${selectedOrder?.id === order.id ? 'bg-blue-50/40' : ''}`}
+                    >
+                      <td className="px-8 py-4">
+                        <div className="font-bold text-slate-900">{order.id.slice(0, 8)}...</div>
+                        <div className="text-xs text-slate-500 mt-0.5">{order.type}</div>
+                      </td>
+                      <td className="px-8 py-4 text-sm font-medium text-slate-600">
+                        {formatDateDisplay(order.date)}
+                      </td>
+                      <td className="px-8 py-4">
+                        <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                          <span className={`font-bold ${fromName === order.from ? 'text-slate-400 text-[11px] break-all' : ''}`}>
+                            {fromName}
+                          </span>
+                          <span className="text-slate-300">→</span>
+                          <span className={`font-bold ${toName === order.to ? 'text-slate-400 text-[11px] break-all' : ''}`}>
+                            {toName}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-8 py-4">{statusBadge(order.status)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
-          {/* Пагінація */}
           <div className="px-8 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
             <span className="text-sm text-slate-500">
-              Показано {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredOrders.length)} із {filteredOrders.length} запитів
+              Показано {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, processedOrders.length)} із {processedOrders.length} запитів
             </span>
             <div className="flex items-center gap-2">
               <button 
@@ -158,7 +248,7 @@ export const LiveManifest = ({ orders, isLoading, selectedOrderId, onSelectOrder
       )}
 
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-6">
+        <div className="fixed inset-0 z-9999 flex items-start justify-center overflow-y-auto p-4 sm:p-6">
           <button
             type="button"
             aria-label="Закрити меню ордера"
@@ -166,7 +256,7 @@ export const LiveManifest = ({ orders, isLoading, selectedOrderId, onSelectOrder
             className="absolute inset-0 bg-slate-950/35 backdrop-blur-[2px]"
           />
 
-          <aside className="relative z-10 mt-4 flex w-full max-w-[720px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[calc(100vh-2rem)] sm:mt-6 sm:max-h-[calc(100vh-3rem)]">
+          <aside className="relative z-10 mt-4 flex w-full max-w-180 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[calc(100vh-2rem)] sm:mt-6 sm:max-h-[calc(100vh-3rem)]">
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
               <div>
                 <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Меню ордера</p>
@@ -198,14 +288,14 @@ export const LiveManifest = ({ orders, isLoading, selectedOrderId, onSelectOrder
                     </div>
                     <div className="rounded-xl bg-white border border-slate-200 p-3">
                       <p className="text-[11px] font-bold uppercase text-slate-400">Дата</p>
-                      <p className="mt-1 font-bold text-slate-900">{selectedOrder.date}</p>
+                      <p className="mt-1 font-bold text-slate-900">{formatDateDisplay(selectedOrder.date)}</p>
                     </div>
                     <div className="rounded-xl bg-white border border-slate-200 p-3 col-span-2">
                       <p className="text-[11px] font-bold uppercase text-slate-400">Маршрут</p>
                       <p className="mt-1 font-bold text-slate-900 flex items-center gap-2 flex-wrap">
-                        <span>{selectedOrder.from}</span>
+                        <span>{getStationName(selectedOrder.from)}</span>
                         <ArrowRight className="w-4 h-4 text-slate-400" />
-                        <span>{selectedOrder.to}</span>
+                        <span>{getStationName(selectedOrder.to)}</span>
                       </p>
                     </div>
                   </div>
