@@ -34,6 +34,7 @@ export const Header = () => {
     toggleTerrain,
     isTerrainEnabled,
     resetFilters,
+    simulation,
   } = useMapStore();
   const [searchInput, setSearchInput] = useState(searchQuery);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -258,7 +259,27 @@ export const Header = () => {
       </div>
 
       <div className="flex items-center gap-4">
-        {/* ОСЬ ТУТ НАШ ФУНКЦІОНАЛЬНИЙ ІНПУТ */}
+        {/* ГОДИННИК СИМУЛЯЦІЇ */}
+        {simulation && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full border border-slate-200 mr-2">
+            <Clock size={14} className="text-slate-500" />
+            <span className="text-sm font-medium text-slate-700 tabular-nums">
+              {simulation.displayTime
+                ? new Date(simulation.displayTime).toLocaleString('uk-UA', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : `Година ${simulation.currentHour}`}
+            </span>
+            {simulation.speed > 1 && (
+              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">
+                x{simulation.speed}
+              </span>
+            )}
+          </div>
+        )}
         <div className="relative group">
           <button
             onClick={() => commitSearch(searchInput)}

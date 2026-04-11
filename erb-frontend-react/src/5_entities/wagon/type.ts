@@ -5,6 +5,7 @@ export interface Wagon {
   status: string;
   currentStationId: string | null;
   lastUnloadTime: string | null;
+  stateUntilHour: number | null;
 }
 
 export interface WagonsResponse {
@@ -21,6 +22,11 @@ const toNullableText = (value: unknown): string | null => {
 export const normalizeWagon = (raw: unknown): Wagon => {
   const source = (raw || {}) as Record<string, unknown>;
 
+  const rawStateUntil = source.stateUntilHour;
+  const stateUntilHour = rawStateUntil != null && Number.isFinite(Number(rawStateUntil))
+    ? Number(rawStateUntil)
+    : null;
+
   return {
     id: toText(source.id),
     number: toText(source.number),
@@ -28,6 +34,7 @@ export const normalizeWagon = (raw: unknown): Wagon => {
     status: toText(source.status) || 'unknown',
     currentStationId: toNullableText(source.currentStationId),
     lastUnloadTime: toNullableText(source.lastUnloadTime),
+    stateUntilHour,
   };
 };
 

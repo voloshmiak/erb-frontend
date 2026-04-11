@@ -6,12 +6,13 @@ import { StationDetails } from '@/3_widgets/station_details/ui/StationDetails';
 import { PageLayout } from '@/6_shared/ui/PageLayout';
 
 export const DispatcherHubPage = () => {
-  const { fetchGraph, fetchFleet, connectEventStream, disconnectEventStream } = useMapStore();
+  const { fetchGraph, fetchFleet, fetchSimulation, connectEventStream, disconnectEventStream } = useMapStore();
 
   useEffect(() => {
     // 1. Початкове завантаження
     fetchGraph();
     fetchFleet();
+    fetchSimulation();
     connectEventStream();
 
     // 2. Оновлюємо агрегований стан парку без перезавантаження карти
@@ -23,7 +24,7 @@ export const DispatcherHubPage = () => {
       clearInterval(interval);
       disconnectEventStream();
     };
-  }, [fetchGraph, fetchFleet, connectEventStream, disconnectEventStream]);
+  }, [fetchGraph, fetchFleet, fetchSimulation, connectEventStream, disconnectEventStream]);
 
   return (
     <PageLayout>

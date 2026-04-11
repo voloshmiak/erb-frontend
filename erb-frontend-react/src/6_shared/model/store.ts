@@ -5,7 +5,7 @@ import { fleetApi, type FleetStatusSummary } from '@/5_entities/station/api/flee
 import type { Wagon } from '@/5_entities/wagon/type';
 import { apiClient } from '@/6_shared/api/api-client';
 
-export type EventType = "orderCreated" | "wagonMoved" | "wagonArrived" | "assignmentCreated" | "wagonDispatched" | "orderFulfilled" | "wagonUnloaded";
+export type EventType = "orderCreated" | "wagonMoved" | "wagonArrived" | "assignmentCreated" | "wagonDispatched" | "orderFulfilled" | "wagonUnloaded" | "simTick";
 
 const EVENT_TYPES: EventType[] = [
   'orderCreated',
@@ -15,6 +15,7 @@ const EVENT_TYPES: EventType[] = [
   'wagonDispatched',
   'orderFulfilled',
   'wagonUnloaded',
+  'simTick',
 ];
 
 const EVENT_TYPES_SET = new Set<string>(EVENT_TYPES);
@@ -64,6 +65,10 @@ const resolveEventMessage = (type: EventType, payload: Record<string, unknown>):
       const num = String(payload.wagonNumber || '').trim();
       return `${num || 'Вагон'} розвантажено`;
     }
+    case 'simTick': {
+      const hour = Number(payload.currentHour) || 0;
+      return `Симуляція: година ${hour}`;
+    }
     default:
       return 'Системна подія';
   }
@@ -106,6 +111,12 @@ export interface StationAnimation {
   createdAt: number;
 }
 
+export interface SimulationState {
+  currentHour: number;
+  displayTime: string;
+  speed: number;
+}
+
 interface MapState {
   graph: RailwayGraph | null;
   fleetStatus: FleetStatusSummary | null;
@@ -116,6 +127,7 @@ interface MapState {
   assignmentRoutes: Record<string, AssignmentRoute>;
   stationAnimations: Record<string, StationAnimation>;
   orderStationMap: Record<string, string>; // orderId -> stationId
+  simulation: SimulationState | null;
   isLoading: boolean;
   isTerrainEnabled: boolean;
   filters: MapFilters;
@@ -126,6 +138,7 @@ interface MapState {
 
   fetchGraph: () => Promise<void>;
   fetchFleet: () => Promise<void>;
+  fetchSimulation: () => Promise<void>;
   addEvent: (event: MapEvent) => void;
   setFilter: (key: keyof MapFilters, value: boolean) => void;
   setSelectedStation: (station: Station | null) => void;
@@ -151,6 +164,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   assignmentRoutes: {},
   stationAnimations: {},
   orderStationMap: {},
+  simulation: null,
   isLoading: false,
   isTerrainEnabled: false,
   filters: {
@@ -226,6 +240,15 @@ export const useMapStore = create<MapState>((set, get) => ({
         const payload = (rawData && typeof rawData === 'object'
           ? rawData
           : parsed) as Record<string, unknown>;
+
+        // simTick — оновлюємо стан симуляції без запису в eventLog
+        if (type === 'simTick') {
+          const currentHour = Number(payload.currentHour) || 0;
+          const displayTime = String(payload.displayTime || '');
+          const speed = Number(payload.speed) || 1;
+          set({ simulation: { currentHour, displayTime, speed } });
+          return;
+        }
 
         const timestampRaw = payload.arrivedAt || payload.EstimatedArrival || payload.createdAt || payload.lastUnloadTime;
         const timestamp = timestampRaw ? new Date(String(timestampRaw)) : new Date();
@@ -452,8 +475,17 @@ export const useMapStore = create<MapState>((set, get) => ({
       const data = await fleetApi.getFleetStatus();
       console.log('📦 Fleet status received in store:', data);
       set({ fleetStatus: data, wagons: data.wagons || [] });
-    } catch (error) { 
-      console.error('❌ Store fetchFleet error:', error); 
+    } catch (error) {
+      console.error('❌ Store fetchFleet error:', error);
+    }
+  },
+
+  fetchSimulation: async () => {
+    try {
+      const res = await apiClient.get<{ currentHour: number; displayTime: string; speed: number }>('/simulation');
+      set({ simulation: res.data });
+    } catch (error) {
+      console.error('❌ Store fetchSimulation error:', error);
     }
   },
 }));

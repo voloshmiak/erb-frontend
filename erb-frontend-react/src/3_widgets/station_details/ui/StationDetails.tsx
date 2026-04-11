@@ -13,7 +13,7 @@ const getStationEntityId = (station: { stationId?: string }): string => {
 };
 
 export const StationDetails = () => {
-  const { selectedStation, setSelectedStation, wagons } = useMapStore();
+  const { selectedStation, setSelectedStation, wagons, simulation } = useMapStore();
 
   const stationWagons = useMemo(() => {
     if (!selectedStation) return [];
@@ -78,6 +78,46 @@ export const StationDetails = () => {
             <p className="text-xs font-bold text-blue-600 uppercase mb-2">Поточний стан</p>
             <p className="text-sm text-blue-800">{stationStateText}</p>
           </div>
+
+          {stationWagons.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase mb-2">Вагони на станції</p>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {stationWagons.map((wagon) => {
+                  const hoursLeft = wagon.stateUntilHour != null && simulation
+                    ? wagon.stateUntilHour - simulation.currentHour
+                    : null;
+
+                  return (
+                    <div
+                      key={wagon.id || wagon.number}
+                      className="p-3 bg-slate-50 rounded-xl border border-slate-100"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-slate-800">
+                          {wagon.number || wagon.id.slice(0, 8)}
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full">
+                          {wagon.status}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">{wagon.type}</p>
+                      {hoursLeft != null && hoursLeft > 0 && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
+                          <span className="font-semibold">
+                            {wagon.status.toLowerCase().includes('load')
+                              ? 'Вивантаження'
+                              : 'Стан'}
+                          </span>
+                          <span>— ще {hoursLeft} год.</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
