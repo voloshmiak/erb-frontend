@@ -13,7 +13,10 @@ export interface CreateOrderDto {
 export const orderService = {
   async getOrders() {
     const response = await fetch(`${BASE_URL}/orders`);
-    if (!response.ok) throw new Error('Помилка завантаження заявок');
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`Помилка завантаження заявок (${response.status}): ${details || 'невідома помилка'}`);
+    }
     const data = await response.json();
     return data.orders || [];
   },
@@ -26,7 +29,10 @@ export const orderService = {
       },
       body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error('Помилка створення заявки');
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`Помилка створення заявки (${response.status}): ${details || 'невідома помилка'}`);
+    }
     return response.json();
   }
 };

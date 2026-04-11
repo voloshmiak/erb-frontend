@@ -1,4 +1,60 @@
+import { useEffect, useMemo } from 'react';
+import { useMapStore } from '@/6_shared/model/store';
+import { progressFillClass, progressTrackClass } from '@/6_shared/ui/pageStyles';
+
+const TYPE_LABELS: Record<string, string> = {
+  gondola: 'Напіввагони',
+  grain_hopper: 'Зерновози',
+  cement_hopper: 'Цементовози',
+  locomotive: 'Локомотиви',
+  _all: 'Увесь парк',
+};
+
 export const CapacityOverview = ({ onManageClick }: { onManageClick?: () => void }) => {
+  const { fleetStatus, fetchFleet } = useMapStore();
+
+  useEffect(() => {
+    fetchFleet();
+  }, [fetchFleet]);
+
+  const { utilizationRows, availableUnits, maintenanceUnits } = useMemo(() => {
+    const byType = fleetStatus?.byType || {};
+    const totalWagons = Number(fleetStatus?.totalWagons || 0);
+
+    const maintenance = Object.values(byType).reduce(
+      (sum, bucket) => sum + Number(bucket?.maintenance || 0),
+      0
+    );
+
+    const available = Math.max(0, totalWagons - maintenance);
+
+    const rows = Object.entries(byType)
+      .map(([type, bucket]) => {
+        const typeTotal = Number(bucket?.total || 0);
+        const percent = totalWagons > 0 ? Math.round((typeTotal / totalWagons) * 100) : 0;
+        return {
+          key: type,
+          label: TYPE_LABELS[type] || type,
+          percent,
+        };
+      })
+      .sort((a, b) => b.percent - a.percent)
+      .slice(0, 3);
+
+    return {
+      utilizationRows:
+        rows.length > 0
+          ? rows
+          : [
+              { key: 'r1', label: 'Напрямок 1', percent: 0 },
+              { key: 'r2', label: 'Напрямок 2', percent: 0 },
+              { key: 'r3', label: 'Напрямок 3', percent: 0 },
+            ],
+      availableUnits: available,
+      maintenanceUnits: maintenance,
+    };
+  }, [fleetStatus]);
+
   return (
     <div className="flex flex-col xl:flex-row gap-6">
       
@@ -19,35 +75,20 @@ export const CapacityOverview = ({ onManageClick }: { onManageClick?: () => void
           </div>
 
           <div className="w-full md:w-1/3 space-y-6">
-            <div>
-              <div className="flex justify-between text-[11px] font-bold mb-2">
-                <span className="text-slate-700 uppercase tracking-widest">Північно-Західний</span>
-                <span className="text-slate-900">82%</span>
+            {utilizationRows.map((row, index) => (
+              <div key={row.key}>
+                <div className="flex justify-between text-[11px] font-bold mb-2">
+                  <span className="text-slate-700 uppercase tracking-widest">{row.label}</span>
+                  <span className="text-slate-900">{row.percent}%</span>
+                </div>
+                <div className={progressTrackClass('sm')}>
+                  <div
+                    className={progressFillClass(index === 0 ? 'neutral' : index === 1 ? 'warning' : 'primary', 'sm')}
+                    style={{ width: `${row.percent}%` }}
+                  />
+                </div>
               </div>
-              <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-slate-900 rounded-full" style={{ width: '82%' }}></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-[11px] font-bold mb-2">
-                <span className="text-slate-700 uppercase tracking-widest">Центральний коридор</span>
-                <span className="text-slate-900">96%</span>
-              </div>
-              <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-[#b24d00] rounded-full" style={{ width: '96%' }}></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-[11px] font-bold mb-2">
-                <span className="text-slate-700 uppercase tracking-widest">Південний маршрут</span>
-                <span className="text-slate-900">45%</span>
-              </div>
-              <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-[#0052cc] rounded-full" style={{ width: '45%' }}></div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -59,12 +100,12 @@ export const CapacityOverview = ({ onManageClick }: { onManageClick?: () => void
           
           <div className="space-y-6">
             <div className="flex items-center gap-5">
-              <span className="text-4xl font-black text-slate-900 w-16">842</span>
+              <span className="text-4xl font-black text-slate-900 w-16">{availableUnits}</span>
               <span className="text-xs font-bold text-slate-500 leading-tight">ДОСТУПНІ<br/>ОДИНИЦІ</span>
             </div>
             
             <div className="flex items-center gap-5">
-              <span className="text-4xl font-black text-slate-900 w-16">56</span>
+              <span className="text-4xl font-black text-slate-900 w-16">{maintenanceUnits}</span>
               <span className="text-xs font-bold text-slate-500 leading-tight">НА ТЕХНІЧНОМУ<br/>ОБСЛУГОВУВАННІ</span>
             </div>
           </div>

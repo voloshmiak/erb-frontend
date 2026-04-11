@@ -1,65 +1,78 @@
-import { Sidebar } from '@/3_widgets/sidebar/ui/Sidebar';
-import { Header } from '@/3_widgets/header/ui/Header';
+import { useEffect, useMemo } from 'react';
+import { PageLayout } from '@/6_shared/ui/PageLayout';
+import { badgeClass, pageStyles, progressFillClass, progressTrackClass } from '@/6_shared/ui/pageStyles';
+import { useMapStore } from '@/6_shared/model/store';
+import { mapWagonStatusToUi, wagonLoadFromStatus, wagonStatusBadgeVariant } from '@/6_shared/lib/statusMappers';
 
 export const FleetPage = () => {
-  const fleetData = [
-    { id: 'вагон_1', type: 'gondola', status: 'в дорозі', station: 'Київ', load: 85 },
-    { id: 'вагон_2', type: 'grain_hopper', status: 'завантажується', station: 'Харків', load: 45 },
-    { id: 'вагон_3', type: 'cement_hopper', status: 'припаркований', station: 'Одеса', load: 0 },
-    { id: 'вагон_4', type: 'gondola', status: 'в дорозі', station: 'Львів', load: 92 },
-  ];
+  const { wagons, graph, fetchFleet, fetchGraph } = useMapStore();
+
+  useEffect(() => {
+    fetchFleet();
+    fetchGraph();
+  }, [fetchFleet, fetchGraph]);
+
+  const fleetData = useMemo(
+    () =>
+      wagons.map((wagon) => {
+        const station = graph?.stations.find(
+          (s) => String(s.stationId || '') === String(wagon.currentStationId || '')
+        );
+
+        return {
+          id: wagon.number || wagon.id,
+          type: wagon.type,
+          status: mapWagonStatusToUi(wagon.status),
+          station: station?.name || 'Невизначено',
+          load: wagonLoadFromStatus(wagon.status),
+        };
+      }),
+    [wagons, graph]
+  );
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#e5e9f0]">
-      <Sidebar />
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Header />
-        <main className="relative flex-1 h-full overflow-hidden p-6">
-          <div className="bg-white rounded-lg shadow-md p-6 h-full overflow-y-auto">
-            <h1 className="text-3xl font-bold text-slate-900 mb-6">Парк вагонів</h1>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-100 border-b-2 border-slate-300">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-900">ID вагона</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-900">Тип</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-900">Статус</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-900">Місцезнаходження</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-900">Завантаженість</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fleetData.map((wagon, idx) => (
-                    <tr key={idx} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 font-mono text-sm text-slate-900">{wagon.id}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700 capitalize">{wagon.type.replace('_', ' ')}</td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          wagon.status === 'в дорозі' ? 'bg-blue-100 text-blue-700' :
-                          wagon.status === 'завантажується' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-green-100 text-green-700'
-                        }`}>
-                          {wagon.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{wagon.station}</td>
-                      <td className="px-4 py-3 text-sm">
-                        <div className="w-32 bg-slate-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full" 
-                            style={{ width: `${wagon.load}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-slate-600">{wagon.load}%</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </main>
+    <PageLayout mainClassName="p-6">
+      <div className={pageStyles.surface}>
+        <h1 className={pageStyles.title}>Парк вагонів</h1>
+        <div className={pageStyles.tableWrap}>
+          <table className={pageStyles.table}>
+            <thead className={pageStyles.thead}>
+              <tr>
+                <th className={pageStyles.th}>ID вагона</th>
+                <th className={pageStyles.th}>Тип</th>
+                <th className={pageStyles.th}>Статус</th>
+                <th className={pageStyles.th}>Місцезнаходження</th>
+                <th className={pageStyles.th}>Завантаженість</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fleetData.length === 0 && (
+                <tr>
+                  <td className={pageStyles.td} colSpan={5}>Дані парку ще завантажуються...</td>
+                </tr>
+              )}
+              {fleetData.map((wagon, idx) => (
+                <tr key={idx} className={pageStyles.row}>
+                  <td className={pageStyles.tdMono}>{wagon.id}</td>
+                  <td className={`${pageStyles.td} capitalize`}>{wagon.type.replace('_', ' ')}</td>
+                  <td className={pageStyles.td}>
+                    <span className={badgeClass(wagonStatusBadgeVariant(wagon.status))}>
+                      {wagon.status}
+                    </span>
+                  </td>
+                  <td className={pageStyles.td}>{wagon.station}</td>
+                  <td className={pageStyles.td}>
+                    <div className={`${progressTrackClass('sm')} w-32`}>
+                      <div className={progressFillClass('primary', 'sm')} style={{ width: `${wagon.load}%` }} />
+                    </div>
+                    <span className="text-xs text-slate-600">{wagon.load}%</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </PageLayout>
   );
 };

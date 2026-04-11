@@ -1,57 +1,83 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X, Search, Filter, Wrench, Train, CheckCircle2, AlertCircle } from 'lucide-react';
-import type { Asset } from '../../5_entities/order/api/orderService'; 
+import { useMapStore } from '@/6_shared/model/store';
+import { badgeClass } from '@/6_shared/ui/pageStyles';
+import { mapWagonStatusToUi, mapWagonTypeToLabel } from '@/6_shared/lib/statusMappers';
 
 interface ManageAssetsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// Мокові дані (на хакатоні це нормально, якщо немає окремого бекенду для парку)
-const mockAssets: Asset[] = [
-  { id: 'WG-7732', type: 'gondola', status: 'available', location: 'Київ', lastInspection: '2026-10-15' },
-  { id: 'WG-7733', type: 'grain_hopper', status: 'in_transit', location: 'Львів', lastInspection: '2026-09-20' },
-  { id: 'WG-7734', type: 'cement_hopper', status: 'maintenance', location: 'Одеса', lastInspection: '2026-10-01' },
-  { id: 'LC-104', type: 'locomotive', status: 'available', location: 'Дніпро', lastInspection: '2026-10-18' },
-  { id: 'WG-7735', type: 'gondola', status: 'available', location: 'Харків', lastInspection: '2026-10-10' },
-];
+type AssetStatus = 'available' | 'maintenance' | 'in_transit';
+
+interface AssetViewModel {
+  id: string;
+  type: string;
+  status: AssetStatus;
+  location: string;
+  lastInspection: string | null;
+}
+
+const mapUiStatusToAssetStatus = (status: string): AssetStatus => {
+  const uiStatus = mapWagonStatusToUi(status);
+  if (uiStatus === 'технічне обслуговування') return 'maintenance';
+  if (uiStatus === 'в дорозі' || uiStatus === 'розвантажується') return 'in_transit';
+  return 'available';
+};
 
 export const ManageAssetsModal = ({ isOpen, onClose }: ManageAssetsModalProps) => {
   const [activeTab, setActiveTab] = useState<'all' | 'wagons' | 'locomotives'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const { wagons, graph, fetchFleet, fetchGraph } = useMapStore();
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    fetchFleet();
+    fetchGraph();
+  }, [isOpen, fetchFleet, fetchGraph]);
 
-  const filteredAssets = mockAssets.filter(asset => {
+  const assets = useMemo<AssetViewModel[]>(() => {
+    return wagons.map((wagon) => {
+      const station = graph?.stations.find(
+        (s) => String(s.stationId || '') === String(wagon.currentStationId || '')
+      );
+
+      return {
+        id: wagon.number || wagon.id,
+        type: wagon.type,
+        status: mapUiStatusToAssetStatus(wagon.status),
+        location: station?.name || 'Невизначено',
+        lastInspection: wagon.lastUnloadTime,
+      };
+    });
+  }, [wagons, graph]);
+
+  const filteredAssets = assets.filter(asset => {
     const matchesTab = 
       activeTab === 'all' || 
       (activeTab === 'wagons' && asset.type !== 'locomotive') ||
       (activeTab === 'locomotives' && asset.type === 'locomotive');
     
     const matchesSearch = asset.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          asset.location.toLowerCase().includes(searchQuery.toLowerCase());
+                          asset.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          mapWagonTypeToLabel(asset.type).toLowerCase().includes(searchQuery.toLowerCase());
     
     return matchesTab && matchesSearch;
   });
 
-  const getStatusBadge = (status: Asset['status']) => {
+  const getStatusBadge = (status: AssetStatus) => {
     switch (status) {
-      case 'available': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-[10px] font-bold text-emerald-700 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Доступний</span>;
-      case 'maintenance': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-50 text-[10px] font-bold text-[#b24d00] uppercase tracking-widest"><Wrench className="w-3 h-3" /> На ТО</span>;
-      case 'in_transit': return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-[10px] font-bold text-[#0052cc] uppercase tracking-widest"><Train className="w-3 h-3" /> В дорозі</span>;
+      case 'available': return <span className={badgeClass('success')}><CheckCircle2 className="w-3 h-3 mr-1" />Доступний</span>;
+      case 'maintenance': return <span className={badgeClass('warning')}><Wrench className="w-3 h-3 mr-1" />На ТО</span>;
+      case 'in_transit': return <span className={badgeClass('primary')}><Train className="w-3 h-3 mr-1" />В дорозі</span>;
       default: return null;
     }
   };
 
-  const getTypeLabel = (type: Asset['type']) => {
-    switch (type) {
-      case 'gondola': return 'Напіввагон';
-      case 'grain_hopper': return 'Зерновоз';
-      case 'cement_hopper': return 'Цементовоз';
-      case 'locomotive': return 'Локомотив';
-      default: return type;
-    }
-  };
+  const getTypeLabel = (type: string) => mapWagonTypeToLabel(type);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -108,7 +134,9 @@ export const ManageAssetsModal = ({ isOpen, onClose }: ManageAssetsModalProps) =
                     <td className="px-8 py-4 font-bold text-slate-900">{asset.id}</td>
                     <td className="px-8 py-4 text-sm font-medium text-slate-600">{getTypeLabel(asset.type)}</td>
                     <td className="px-8 py-4 text-sm font-medium text-slate-900">{asset.location}</td>
-                    <td className="px-8 py-4 text-sm text-slate-500">{new Date(asset.lastInspection).toLocaleDateString('uk-UA')}</td>
+                    <td className="px-8 py-4 text-sm text-slate-500">
+                      {asset.lastInspection ? new Date(asset.lastInspection).toLocaleDateString('uk-UA') : '—'}
+                    </td>
                     <td className="px-8 py-4">{getStatusBadge(asset.status)}</td>
                   </tr>
                 ))
@@ -127,7 +155,7 @@ export const ManageAssetsModal = ({ isOpen, onClose }: ManageAssetsModalProps) =
         {/* Футер */}
         <div className="bg-slate-50 border-t border-slate-200 px-8 py-4 flex justify-between items-center">
           <div className="text-sm font-bold text-slate-500">
-            Всього активів: <span className="text-slate-900">{filteredAssets.length}</span>
+            Всього активів: <span className="text-slate-900">{filteredAssets.length}</span> із {assets.length}
           </div>
           <button className="px-6 py-2.5 rounded-lg text-sm font-bold text-white bg-[#0f2e5a] hover:bg-[#002f70] transition-colors shadow-md">
             Експорт звіту

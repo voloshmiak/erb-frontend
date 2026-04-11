@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X, MapPin, Flag, Calendar, Info, Save, ArrowRight, ChevronDown, User } from 'lucide-react';
 import { orderService, type WagonType } from '../../5_entities/order/api/orderService';
+import { useMapStore } from '@/6_shared/model/store';
 
 interface CreateShipmentModalProps {
   isOpen: boolean;
@@ -15,6 +16,20 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
   const [date, setDate] = useState('');
   const [priority, setPriority] = useState('EXPRESS');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { graph, fetchGraph } = useMapStore();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    fetchGraph();
+  }, [isOpen, fetchGraph]);
+
+  const stations = useMemo(
+    () =>
+      [...(graph?.stations || [])].sort((a, b) =>
+        String(a.name || '').localeCompare(String(b.name || ''), 'uk-UA')
+      ),
+    [graph]
+  );
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/\D/g, ''); 
@@ -25,10 +40,28 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
     setDate(formattedDate);
   };
 
+  const toApiDate = (uiDate: string): string | null => {
+    const trimmed = uiDate.trim();
+    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
+    if (!match) return null;
+
+    const [, dd, mm, yyyy] = match;
+    const asDate = new Date(`${yyyy}-${mm}-${dd}T00:00:00Z`);
+    if (Number.isNaN(asDate.getTime())) return null;
+
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
    // Валідація та відправка даних на сервер
   const handleSubmit = async () => {
     if (!clientName || !destination || !date) {
       alert('Будь ласка, заповніть обов\'язкові поля: Компанія, Станція призначення та Дата.');
+      return;
+    }
+
+    const apiDate = toApiDate(date);
+    if (!apiDate) {
+      alert('Некоректна дата. Використайте формат дд/мм/рррр.');
       return;
     }
 
@@ -37,7 +70,7 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
     try {
       await orderService.createOrder({
         clientName: clientName, 
-        desiredDate: date,
+        desiredDate: apiDate,
         quantity: 1, 
         stationToId: destination,
         wagonType: cargoType
@@ -50,7 +83,8 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
       onClose(); 
       
     } catch (error) { 
-      alert('Помилка при створенні запиту на сервері. Перевірте консоль.'); 
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка при створенні запиту на сервері: ${message}`);
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -137,26 +171,38 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Станція відправлення</label>
                     <div className="relative">
                       <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input 
-                        type="text" 
-                        value={origin} 
-                        onChange={(e) => setOrigin(e.target.value)} 
-                        placeholder="Звідки (опціонально)..." 
-                        className="w-full bg-slate-100 border-none rounded-lg pl-10 pr-4 py-3 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-[#0052cc]/20 outline-none" 
-                      />
+                      <select
+                        value={origin}
+                        onChange={(e) => setOrigin(e.target.value)}
+                        className="w-full bg-slate-100 border-none rounded-lg pl-10 pr-10 py-3 text-sm font-medium text-slate-700 appearance-none focus:ring-2 focus:ring-[#0052cc]/20 outline-none cursor-pointer"
+                      >
+                        <option value="">Оберіть станцію відправлення (опціонально)...</option>
+                        {stations.map((station) => (
+                          <option key={`origin-${station.stationId}`} value={station.stationId}>
+                            {station.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-slate-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Станція призначення <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <Flag className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input 
-                        type="text" 
-                        value={destination} 
-                        onChange={(e) => setDestination(e.target.value)} 
-                        placeholder="Куди (ID станції або назва)..." 
-                        className="w-full bg-slate-100 border-none rounded-lg pl-10 pr-4 py-3 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-[#0052cc]/20 outline-none" 
-                      />
+                      <select
+                        value={destination}
+                        onChange={(e) => setDestination(e.target.value)}
+                        className="w-full bg-slate-100 border-none rounded-lg pl-10 pr-10 py-3 text-sm font-medium text-slate-700 appearance-none focus:ring-2 focus:ring-[#0052cc]/20 outline-none cursor-pointer"
+                      >
+                        <option value="">Оберіть станцію призначення...</option>
+                        {stations.map((station) => (
+                          <option key={station.stationId} value={station.stationId}>
+                            {station.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-slate-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
                 </div>

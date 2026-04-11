@@ -1,38 +1,65 @@
-import { Sidebar } from '@/3_widgets/sidebar/ui/Sidebar';
-import { Header } from '@/3_widgets/header/ui/Header';
+import { useEffect, useMemo } from 'react';
+import { PageLayout } from '@/6_shared/ui/PageLayout';
+import { badgeClass, pageStyles } from '@/6_shared/ui/pageStyles';
+import { useMapStore } from '@/6_shared/model/store';
+import { operationTypeBadgeVariant, wagonOperationTypeFromStatus } from '@/6_shared/lib/statusMappers';
+
+const toTimeLabel = (value: Date) =>
+  `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
 
 export const SchedulePage = () => {
-  const schedule = [
-    { id: 'sched_1', wagon: 'вагон_1', station: 'Київ', arrivalTime: '09:00', departureTime: '12:30', type: 'Завантаження' },
-    { id: 'sched_2', wagon: 'вагон_1', station: 'Харків', arrivalTime: '14:15', departureTime: '16:45', type: 'Перевантаження' },
-    { id: 'sched_3', wagon: 'вагон_2', station: 'Харків', arrivalTime: '08:30', departureTime: '11:00', type: 'Завантаження' },
-    { id: 'sched_4', wagon: 'вагон_2', station: 'Одеса', arrivalTime: '18:00', departureTime: '20:30', type: 'Розвантаження' },
-    { id: 'sched_5', wagon: 'вагон_3', station: 'Львів', arrivalTime: '10:00', departureTime: '13:00', type: 'Завантаження' },
-    { id: 'sched_6', wagon: 'вагон_3', station: 'Київ', arrivalTime: '23:30', departureTime: '02:00', type: 'Розвантаження' },
-  ];
+  const { wagons, graph, fetchFleet, fetchGraph } = useMapStore();
+
+  useEffect(() => {
+    fetchFleet();
+    fetchGraph();
+  }, [fetchFleet, fetchGraph]);
+
+  const schedule = useMemo(
+    () =>
+      wagons.slice(0, 24).map((wagon) => {
+        const station = graph?.stations.find(
+          (s) => String(s.stationId || '') === String(wagon.currentStationId || '')
+        );
+
+        const baseDate = wagon.lastUnloadTime ? new Date(wagon.lastUnloadTime) : new Date();
+        const departureDate = new Date(baseDate.getTime() + 2 * 60 * 60 * 1000);
+
+        return {
+          id: wagon.id || wagon.number,
+          wagon: wagon.number || wagon.id,
+          station: station?.name || 'Невизначено',
+          arrivalTime: toTimeLabel(baseDate),
+          departureTime: toTimeLabel(departureDate),
+          type: wagonOperationTypeFromStatus(wagon.status),
+        };
+      }),
+    [wagons, graph]
+  );
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#e5e9f0]">
-      <Sidebar />
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Header />
-        <main className="relative flex-1 h-full overflow-hidden p-6">
-          <div className="bg-white rounded-lg shadow-md p-6 h-full overflow-y-auto">
-            <h1 className="text-3xl font-bold text-slate-900 mb-6">Розклад операцій</h1>
+    <PageLayout mainClassName="p-6">
+      <div className={pageStyles.surface}>
+            <h1 className={pageStyles.title}>Розклад операцій</h1>
             
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-100 border-b-2" style={{ borderColor: '#002e7e' }}>
+            <div className={pageStyles.tableWrap}>
+              <table className={pageStyles.table}>
+                <thead className={pageStyles.thead}>
                   <tr>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-900">Вагон</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-900">Станція</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-900">Тип операції</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-900">Прибуття</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-900">Відправлення</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-900">Тривалість</th>
+                    <th className={pageStyles.th}>Вагон</th>
+                    <th className={pageStyles.th}>Станція</th>
+                    <th className={pageStyles.th}>Тип операції</th>
+                    <th className={pageStyles.th}>Прибуття</th>
+                    <th className={pageStyles.th}>Відправлення</th>
+                    <th className={pageStyles.th}>Тривалість</th>
                   </tr>
                 </thead>
                 <tbody>
+                  {schedule.length === 0 && (
+                    <tr>
+                      <td className={pageStyles.td} colSpan={6}>Дані розкладу ще завантажуються...</td>
+                    </tr>
+                  )}
                   {schedule.map((item, idx) => {
                     const [arr_h, arr_m] = item.arrivalTime.split(':').map(Number);
                     const [dep_h, dep_m] = item.departureTime.split(':').map(Number);
@@ -42,20 +69,16 @@ export const SchedulePage = () => {
                     const minutes = duration % 60;
 
                     return (
-                      <tr key={idx} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                      <tr key={idx} className={pageStyles.row}>
                         <td className="px-4 py-3 font-mono text-sm font-semibold" style={{ color: '#002e7e' }}>{item.wagon}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700">{item.station}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            item.type === 'Завантаження' ? 'bg-yellow-100 text-yellow-700' :
-                            item.type === 'Розвантаження' ? 'bg-green-100 text-green-700' :
-                            'bg-blue-100 text-blue-700'
-                          }`}>
+                        <td className={pageStyles.td}>{item.station}</td>
+                        <td className={pageStyles.td}>
+                          <span className={badgeClass(operationTypeBadgeVariant(item.type))}>
                             {item.type}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-700 font-medium">{item.arrivalTime}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700 font-medium">{item.departureTime}</td>
+                        <td className={`${pageStyles.td} font-medium`}>{item.arrivalTime}</td>
+                        <td className={`${pageStyles.td} font-medium`}>{item.departureTime}</td>
                         <td className="px-4 py-3 text-sm text-slate-600">{hours}г {minutes}хв</td>
                       </tr>
                     );
@@ -63,9 +86,7 @@ export const SchedulePage = () => {
                 </tbody>
               </table>
             </div>
-          </div>
-        </main>
       </div>
-    </div>
+    </PageLayout>
   );
 };

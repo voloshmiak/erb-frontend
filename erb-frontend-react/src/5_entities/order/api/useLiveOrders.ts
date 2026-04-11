@@ -1,40 +1,41 @@
 import { useState, useEffect } from 'react';
 import { orderService } from './orderService';
+import { mapBackendOrderStatusToUi, mapWagonTypeToLabel } from '@/6_shared/lib/statusMappers';
 
-const mapWagonType = (type: string) => {
-  switch(type) {
-    case 'gondola': return 'Напіввагон';
-    case 'grain_hopper': return 'Зерновоз';
-    case 'cement_hopper': return 'Цементовоз';
-    default: return type;
-  }
-};
+interface RawOrder {
+  id: string;
+  wagonType: string;
+  desiredDate?: string;
+  createdAt: string;
+  stationFromId?: string;
+  stationToId: string;
+  status: string;
+}
 
-const mapStatus = (status: string) => {
-  switch(status) {
-    case 'pending': return 'Очікує';
-    case 'approved': return 'Підтверджено';
-    case 'in_transit': return 'У дорозі';
-    case 'delivered': return 'Доставлено';
-    default: return 'Очікує';
-  }
-};
+export interface FormattedOrder {
+  id: string;
+  type: string;
+  date: string;
+  from: string;
+  to: string;
+  status: string;
+}
 
 export const useLiveOrders = () => {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<FormattedOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchOrders = async () => {
     try {
       const rawOrders = await orderService.getOrders();
       
-      const formattedOrders = rawOrders.map((o: any) => ({
+      const formattedOrders = rawOrders.map((o: RawOrder) => ({
         id: o.id,
-        type: mapWagonType(o.wagonType),
+        type: mapWagonTypeToLabel(o.wagonType),
         date: o.desiredDate || o.createdAt,
         from: o.stationFromId || '---', // Реальні дані або прочерк
         to: o.stationToId,
-        status: mapStatus(o.status),
+        status: mapBackendOrderStatusToUi(o.status),
       }));
 
       setOrders(formattedOrders.reverse());
