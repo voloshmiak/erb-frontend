@@ -9,7 +9,7 @@ import { PageLayout } from '@/6_shared/ui/PageLayout';
 import { actionButtonClass, pageStyles } from '@/6_shared/ui/pageStyles';
 import { MetricCard } from '@/6_shared/ui/MetricCard';
 
-export const DashboardPage = () => {
+export const FreightRequestPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAssetsModalOpen, setIsAssetsModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);

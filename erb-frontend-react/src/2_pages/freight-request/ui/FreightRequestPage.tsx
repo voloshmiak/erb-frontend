@@ -1,0 +1,1 @@
+export { FreightRequestPage } from '../FreightRequestPage';

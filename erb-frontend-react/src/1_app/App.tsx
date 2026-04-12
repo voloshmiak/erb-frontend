@@ -3,7 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css'; 
 import 'leaflet/dist/leaflet.css'; 
 import { DispatcherHubPage } from '@/2_pages/dispetcher_hub/ui/DispatcherHubPage';
-import { DashboardPage } from '@/2_pages/dashboard/DashboardPage';
+import { Dashboard } from '@/2_pages/dashboard/ui/Dashboard';
+import { FreightRequestPage } from '@/2_pages/freight-request/FreightRequestPage';
 import { FleetPage } from '@/2_pages/fleet/ui/FleetPage';
 import { ReportsPage } from '@/2_pages/reports/ui/ReportsPage';
 import { OperationsPage } from '@/2_pages/operations/ui/OperationsPage';
@@ -27,8 +28,11 @@ const App = () => {
         {/* Розклад */}
         <Route path="/schedule" element={<SchedulePage />} />
         
-        {/* Панель керування */}
-        <Route path="/dashboard" element={<DashboardPage />} />
+        {/* Dashboard */}
+        <Route path="/dashboard" element={<Dashboard />} />
+
+        {/* Створення заявок */}
+        <Route path="/freight-request" element={<FreightRequestPage />} />
         
         {/* Парк */}
         <Route path="/fleet" element={<FleetPage />} />
