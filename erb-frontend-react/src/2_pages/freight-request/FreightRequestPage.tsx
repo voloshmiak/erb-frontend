@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { LiveManifest } from '../../3_widgets/live-manifest/LiveManifest';
-import { CapacityOverview } from '../../3_widgets/capacity-overview/CapacityOverview';
 import { CreateShipmentModal } from '../../4_features/create-shipment/CreateShipmentModal';
 import { ManageAssetsModal } from '../../4_features/manage-assets/ManageAssetsModal';
 import { useLiveOrders } from '../../5_entities/order/api/useLiveOrders';
-import { PlusCircle, Train, AlertTriangle, Clock } from 'lucide-react';
+import { PlusCircle, Train, AlertTriangle, Package } from 'lucide-react';
 import { PageLayout } from '@/6_shared/ui/PageLayout';
 import { actionButtonClass, pageStyles } from '@/6_shared/ui/pageStyles';
 import { MetricCard } from '@/6_shared/ui/MetricCard';
@@ -16,13 +15,8 @@ export const FreightRequestPage = () => {
   
   const { orders, isLoading, refetch } = useLiveOrders();
 
-  const activeOrders = orders.filter(o => o.status === 'У дорозі').length;
+  const activeOrders = orders.filter(o => o.status === 'Узгоджено').length;
   const pendingOrders = orders.filter(o => o.status === 'Очікує').length;
-  const deliveredOrders = orders.filter(o => o.status === 'Доставлено').length;
-  
-  const efficiency = orders.length > 0 
-    ? Math.round((deliveredOrders / orders.length) * 100) 
-    : 100;
 
   return (
     <>
@@ -41,9 +35,16 @@ export const FreightRequestPage = () => {
             <MetricCard
               label="Активні перевезення"
               value={activeOrders}
-              hint="Вагони у дорозі"
+              hint="Узгоджені замовлення"
               tone="primary"
               icon={<Train className="w-4 h-4" />}
+            />
+            <MetricCard
+              label="Всього замовлень"
+              value={orders.length}
+              hint="Активні замовлення"
+              tone="neutral"
+              icon={<Package className="w-4 h-4" />}
             />
             <MetricCard
               label="Очікують підтвердження"
@@ -51,13 +52,6 @@ export const FreightRequestPage = () => {
               hint="Потребують обробки"
               tone="warning"
               icon={<AlertTriangle className="w-4 h-4" />}
-            />
-            <MetricCard
-              label="Ефективність мережі"
-              value={`${efficiency}%`}
-              hint="Успішно доставлено"
-              tone="neutral"
-              icon={<Clock className="w-4 h-4" />}
             />
           </div>
 
@@ -68,10 +62,6 @@ export const FreightRequestPage = () => {
               selectedOrderId={selectedOrderId}
               onSelectOrder={setSelectedOrderId}
             />
-          </div>
-
-          <div>
-            <CapacityOverview onManageClick={() => setIsAssetsModalOpen(true)} />
           </div>
       </PageLayout>
 

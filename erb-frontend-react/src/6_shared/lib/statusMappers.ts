@@ -21,12 +21,12 @@ export const mapBackendOrderStatusToUi = (status: string): OrderStatus => {
   switch (String(status || '').toLowerCase()) {
     case 'pending':
       return 'Очікує';
-    case 'approved':
-      return 'Підтверджено';
-    case 'in_transit':
-      return 'У дорозі';
-    case 'delivered':
-      return 'Доставлено';
+    case 'matched':
+      return 'Узгоджено';
+    case 'fulfilled':
+      return 'Виконано';
+    case 'cancelled':
+      return 'Скасовано';
     default:
       return 'Очікує';
   }

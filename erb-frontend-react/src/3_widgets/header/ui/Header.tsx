@@ -1,26 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Bell, Settings, User, X, LocateFixed, MapPinned, SlidersHorizontal, RotateCcw, Clock } from 'lucide-react';
+import { Search, Bell, User, X, LocateFixed, Clock } from 'lucide-react';
 import { useMapStore } from '@/6_shared/model/store';
 import type { Station } from '@/5_entities/station/model/type';
 import type { Wagon } from '@/5_entities/wagon/type';
 
-type MenuKey = 'notifications' | 'settings' | 'profile' | null;
+type MenuKey = 'notifications' | 'profile' | null;
 type SearchSuggestion =
   | { kind: 'station'; station: Station }
   | { kind: 'wagon'; wagon: Wagon };
 
 const DEFAULT_CENTER = { lat: 48.3794, lng: 31.1656, zoom: 6 };
 
-const NAV_TABS = [
-  { id: 'main', label: 'Головна мапа', path: '/' },
-  { id: 'live', label: 'Операції наживо', path: '/operations' },
-  { id: 'schedule', label: 'Розклад', path: '/schedule' },
-];
-
 export const Header = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
   const {
     graph,
     wagons,
@@ -31,9 +22,6 @@ export const Header = () => {
     eventLog,
     unreadCount,
     requestMapCenter,
-    toggleTerrain,
-    isTerrainEnabled,
-    resetFilters,
     simulation,
   } = useMapStore();
   const [searchInput, setSearchInput] = useState(searchQuery);
@@ -93,12 +81,6 @@ export const Header = () => {
     closeMenus();
   };
 
-  const clearSelection = () => {
-    setSelectedStation(null);
-    setSearchQuery('');
-    setSearchInput('');
-    closeMenus();
-  };
 
   const stationSuggestions = useMemo(() => {
     const query = searchInput.trim().toLowerCase();
@@ -240,31 +222,10 @@ export const Header = () => {
         <div className="font-bold text-lg tracking-tight cursor-pointer" style={{ color: '#002e7e' }}>
           УЗ Логістика
         </div>
-        
-        <nav className="flex items-center gap-6">
-          {NAV_TABS.map((tab) => {
-            const isActive = location.pathname === tab.path;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => navigate(tab.path)}
-                className={`text-sm font-medium transition-colors relative py-5 ${
-                  isActive ? "font-semibold" : 'text-slate-500 hover:text-slate-800'
-                }`} 
-                style={isActive ? { color: '#002e7e' } : {}}
-              >
-                {tab.label}
-                {isActive && <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: '#002e7e' }} />}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
 
-      <div className="flex items-center gap-4">
         {/* ГОДИННИК СИМУЛЯЦІЇ */}
         {simulation && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full border border-slate-200 mr-2">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full border border-slate-200">
             <Clock size={14} className="text-slate-500" />
             <span className="text-sm font-medium text-slate-700 tabular-nums">
               {simulation.displayTime
@@ -283,6 +244,9 @@ export const Header = () => {
             )}
           </div>
         )}
+      </div>
+
+      <div className="flex items-center gap-4">
         <div className="relative group">
           <button
             onClick={() => commitSearch(searchInput)}
@@ -292,7 +256,7 @@ export const Header = () => {
           </button>
           <input 
             type="text" 
-            placeholder="Пошук станцій або активів..." 
+            placeholder="Пошук станцій або вагонів..."
             value={searchInput}
             onChange={(e) => {
               setSearchInput(e.target.value);
@@ -334,7 +298,7 @@ export const Header = () => {
                 }
               }
             }}
-            className="bg-slate-100 border border-transparent rounded-full py-2 pl-11 pr-20 text-sm w-72 focus:ring-2 focus:ring-[#002e7e]/20 focus:border-[#002e7e]/30 outline-none transition-all placeholder:text-slate-400 group-hover:bg-slate-50"
+            className="bg-slate-100 border border-[#002e7e] rounded-full py-2 pl-11 pr-20 text-sm w-[32rem] focus:ring-2 focus:ring-[#002e7e]/20 outline-none transition-all placeholder:text-slate-400 group-hover:bg-slate-50"
           />
 
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -415,14 +379,6 @@ export const Header = () => {
               </span>
             )}
           </button>
-          <button
-            onClick={() => setActiveMenu((prev) => (prev === 'settings' ? null : 'settings'))}
-            className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors"
-            aria-expanded={activeMenu === 'settings'}
-            aria-label="Швидкі налаштування"
-          >
-            <Settings size={20} />
-          </button>
           <div className="flex items-center gap-2 ml-2 pl-3 border-l border-slate-200">
             <button
               onClick={() => setActiveMenu((prev) => (prev === 'profile' ? null : 'profile'))}
@@ -487,49 +443,6 @@ export const Header = () => {
             </div>
           )}
 
-          {activeMenu === 'settings' && (
-            <div className="absolute right-0 top-full mt-3 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-[3200]">
-              <div className="px-4 py-3 border-b border-slate-100">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Налаштування карти</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Швидкі дії для мапи та фільтрів</p>
-              </div>
-              <div className="p-3 space-y-2">
-                <button
-                  onClick={() => {
-                    toggleTerrain();
-                    closeMenus();
-                  }}
-                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-left transition-colors"
-                >
-                  <span className="flex items-center gap-2 text-sm text-slate-700">
-                    <MapPinned size={16} className="text-slate-400" />
-                    <span>Рельєф мапи</span>
-                  </span>
-                  <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${isTerrainEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                    {isTerrainEnabled ? 'Увімкнено' : 'Вимкнено'}
-                  </span>
-                </button>
-                <button
-                  onClick={() => {
-                    resetFilters();
-                    closeMenus();
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-left transition-colors text-sm text-slate-700"
-                >
-                  <SlidersHorizontal size={16} className="text-slate-400" />
-                  <span>Скинути фільтри карти</span>
-                </button>
-                <button
-                  onClick={resetView}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-left transition-colors text-sm text-slate-700"
-                >
-                  <LocateFixed size={16} className="text-slate-400" />
-                  <span>Повернути карту в центр</span>
-                </button>
-              </div>
-            </div>
-          )}
-
           {activeMenu === 'profile' && (
             <div className="absolute right-0 top-full mt-3 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-[3200]">
               <div className="px-4 py-3 border-b border-slate-100">
@@ -537,25 +450,6 @@ export const Header = () => {
                 <p className="text-[10px] text-slate-400 mt-0.5">AV · черговий диспетчер</p>
               </div>
               <div className="p-4 space-y-3">
-                <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-sm text-slate-700">
-                  <div className="font-medium text-slate-900">Поточний вибір</div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    {selectedStation ? selectedStation.name : 'Станція не вибрана'}
-                  </div>
-                </div>
-                <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-sm text-slate-700">
-                  <div className="font-medium text-slate-900">Пошук</div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    {searchInput.trim() ? searchInput : 'Пошук неактивний'}
-                  </div>
-                </div>
-                <button
-                  onClick={clearSelection}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-left transition-colors text-sm text-slate-700"
-                >
-                  <RotateCcw size={16} className="text-slate-400" />
-                  <span>Очистити пошук і вибір</span>
-                </button>
               </div>
             </div>
           )}

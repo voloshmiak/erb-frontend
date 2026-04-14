@@ -34,7 +34,7 @@ const App = () => {
         {/* Створення заявок */}
         <Route path="/freight-request" element={<FreightRequestPage />} />
         
-        {/* Парк */}
+        {/* Парк вагонів */}
         <Route path="/fleet" element={<FleetPage />} />
         
         {/* Логістичні звіти */}

@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
-import { 
-  Clock, CheckCircle2, Filter, Download, 
+import { useState, useMemo, useRef, useEffect } from 'react';
+import {
+  Clock, CheckCircle2, Filter, Download,
   ChevronLeft, ChevronRight, ArrowRight, X,
-  ArrowUpDown, ArrowUp, ArrowDown 
+  ArrowUpDown, ArrowUp, ArrowDown, Check
 } from 'lucide-react';
 import type { FormattedOrder } from '@/5_entities/order/api/useLiveOrders';
 import { useMapStore } from '@/6_shared/model/store'; 
@@ -14,18 +14,18 @@ type LiveManifestProps = {
   onSelectOrder: (orderId: string | null) => void;
 };
 
-const statusSteps = ['Очікує', 'Підтверджено', 'У дорозі', 'Доставлено'] as const;
+const statusSteps = ['Очікує', 'Узгоджено', 'Виконано'] as const;
 
 const statusBadge = (status: string) => {
   switch (status) {
-    case 'У дорозі':
-      return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-[11px] font-bold text-[#0052cc]"><div className="w-1.5 h-1.5 rounded-full bg-[#0052cc]"></div> У дорозі</span>;
     case 'Очікує':
       return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 text-[11px] font-bold text-[#b24d00]"><Clock className="w-3 h-3" /> Очікує</span>;
-    case 'Підтверджено':
-      return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-[11px] font-bold text-emerald-700"><CheckCircle2 className="w-3 h-3" /> Підтверджено</span>;
-    case 'Доставлено':
-      return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-[11px] font-bold text-slate-500"><CheckCircle2 className="w-3 h-3" /> Доставлено</span>;
+    case 'Узгоджено':
+      return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-[11px] font-bold text-[#0052cc]"><CheckCircle2 className="w-3 h-3" /> Узгоджено</span>;
+    case 'Виконано':
+      return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-[11px] font-bold text-emerald-700"><CheckCircle2 className="w-3 h-3" /> Виконано</span>;
+    case 'Скасовано':
+      return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-[11px] font-bold text-red-600"><X className="w-3 h-3" /> Скасовано</span>;
     default:
       return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-[11px] font-bold text-slate-600">{status}</span>;
   }
@@ -51,12 +51,27 @@ const formatDateDisplay = (dateStr: string): string => {
   }
 };
 
+const allStatuses = ['Всі', 'Очікує', 'Узгоджено', 'Виконано', 'Скасовано'] as const;
+type StatusFilterValue = typeof allStatuses[number];
+
 export const LiveManifest = ({ orders, isLoading, selectedOrderId, onSelectOrder }: LiveManifestProps) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState('Всі');
-  
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('Всі');
+  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
+
   // Стейт для сортування: за замовчуванням 'desc' (від найновіших)
   const [sortConfig, setSortConfig] = useState<{ key: 'date', direction: 'asc' | 'desc' } | null>({ key: 'date', direction: 'desc' });
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
+        setIsStatusMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   
   const itemsPerPage = 10;
 
@@ -117,23 +132,33 @@ export const LiveManifest = ({ orders, isLoading, selectedOrderId, onSelectOrder
   const selectedOrder = processedOrders.find((order) => order.id === selectedOrderId) || null;
 
   return (
-    <div className="relative bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+    <div className="relative bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col">
       <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white">
         <h2 className="text-xl font-bold text-slate-900">Журнал перевезень</h2>
         <div className="flex gap-4">
-          <div className="relative">
-            <Filter className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <select 
-              value={statusFilter} 
-              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-              className="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none appearance-none cursor-pointer"
+          <div className="relative" ref={statusMenuRef}>
+            <button
+              onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border ${statusFilter !== 'Всі' ? 'bg-blue-50 border-[#0052cc] text-[#0052cc]' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
             >
-              <option value="Всі">Всі статуси</option>
-              <option value="Очікує">Очікують</option>
-              <option value="Підтверджено">Підтверджені</option>
-              <option value="У дорозі">У дорозі</option>
-              <option value="Доставлено">Доставлені</option>
-            </select>
+              <Filter className="w-4 h-4" />
+              <span>{statusFilter === 'Всі' ? 'Всі статуси' : statusFilter}</span>
+            </button>
+
+            {isStatusMenuOpen && (
+              <div className="absolute top-full mt-2 right-0 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden z-50 min-w-max">
+                {allStatuses.map(status => (
+                  <button
+                    key={status}
+                    onClick={() => { setStatusFilter(status); setCurrentPage(1); setIsStatusMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors flex items-center gap-2"
+                  >
+                    <span className="w-4">{statusFilter === status && <Check size={16} className="text-[#0052cc]" />}</span>
+                    <span>{status === 'Всі' ? 'Всі статуси' : status}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
             <Download className="w-4 h-4" /> Експорт
@@ -321,9 +346,8 @@ export const LiveManifest = ({ orders, isLoading, selectedOrderId, onSelectOrder
                             <p className={`font-bold ${isActive ? 'text-[#0f2e5a]' : 'text-slate-700'}`}>{step}</p>
                             <p className="text-sm text-slate-500">
                               {index === 0 && 'Заявка прийнята в обробку'}
-                              {index === 1 && 'Підтвердження від диспетчера'}
-                              {index === 2 && 'Вагон в дорозі до станції призначення'}
-                              {index === 3 && 'Рейс завершено'}
+                              {index === 1 && 'Узгоджено з диспетчером'}
+                              {index === 2 && 'Перевезення виконано'}
                             </p>
                           </div>
                         </div>

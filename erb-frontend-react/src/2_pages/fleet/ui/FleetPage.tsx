@@ -1,28 +1,47 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { PageLayout } from '@/6_shared/ui/PageLayout';
-import { badgeClass, pageStyles, progressFillClass, progressTrackClass } from '@/6_shared/ui/pageStyles';
+import { badgeClass, pageStyles } from '@/6_shared/ui/pageStyles';
 import { useMapStore } from '@/6_shared/model/store';
-import { mapWagonStatusToUi, wagonLoadFromStatus, wagonStatusBadgeVariant } from '@/6_shared/lib/statusMappers';
-import { ArrowDown, ArrowUp, ArrowUpDown, Search, Filter, X, MapPin, Layers } from 'lucide-react';
+import { mapWagonStatusToUi, wagonStatusBadgeVariant, type WagonUiStatus } from '@/6_shared/lib/statusMappers';
+import { ArrowDown, ArrowUp, ArrowUpDown, Search, Filter, X, MapPin, Layers, Check } from 'lucide-react';
 
 export const FleetPage = () => {
   const { wagons, graph, fetchFleet, fetchGraph } = useMapStore();
 
-  const [sortConfig, setSortConfig] = useState<{ key: 'id' | 'load' | 'type', direction: 'asc' | 'desc' } | null>(null);
-  
+  const [sortConfig, setSortConfig] = useState<{ key: 'id' | 'type', direction: 'asc' | 'desc' } | null>(null);
+
   // Фільтри
   const [statusFilter, setStatusFilter] = useState<string>('Всі');
-  const [typeFilter, setTypeFilter] = useState<string>('Всі'); 
-  
+  const [typeFilter, setTypeFilter] = useState<string>('Всі');
+  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+  const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
+  const typeMenuRef = useRef<HTMLDivElement>(null);
+
   // Стейти для пошуку станції
   const [stationSearch, setStationSearch] = useState('');
   const [selectedStation, setSelectedStation] = useState('');
   const [isStationFocused, setIsStationFocused] = useState(false);
 
+
   useEffect(() => {
     fetchFleet();
     fetchGraph();
   }, [fetchFleet, fetchGraph]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
+        setIsStatusMenuOpen(false);
+      }
+      if (typeMenuRef.current && !typeMenuRef.current.contains(event.target as Node)) {
+        setIsTypeMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // 1. Мапимо всі вагони
   const allMappedWagons = useMemo(
@@ -37,21 +56,19 @@ export const FleetPage = () => {
           type: wagon.type, // 'gondola', 'cement_hopper', 'grain_hopper'
           status: mapWagonStatusToUi(wagon.status),
           station: station?.name || 'Невизначено',
-          load: wagonLoadFromStatus(wagon.status),
         };
       }),
     [wagons, graph]
   );
 
-  // 2. Унікальні статуси та типи для фільтрів
-  const uniqueStatuses = useMemo(() => {
-    const statuses = new Set(allMappedWagons.map(w => w.status));
-    return Array.from(statuses).sort();
-  }, [allMappedWagons]);
+  // 2. Усі можливі статуси (незалежно від того, чи є вагони з такими статусами)
+  const allStatuses = useMemo(() => {
+    return ['Всі', 'в дорозі', 'завантажується', 'розвантажується', 'технічне обслуговування', 'припаркований', 'очікує'] as const;
+  }, []);
 
   const uniqueTypes = useMemo(() => {
     // Автоматично збираємо типи: gondola, cement_hopper, grain_hopper і т.д.
-    const types = new Set(allMappedWagons.map(w => w.type));
+    const types = new Set<string>(allMappedWagons.map(w => w.type));
     return Array.from(types).sort();
   }, [allMappedWagons]);
 
@@ -78,9 +95,6 @@ export const FleetPage = () => {
         if (sortConfig.key === 'type') {
           return sortConfig.direction === 'asc' ? a.type.localeCompare(b.type) : b.type.localeCompare(a.type);
         }
-        if (sortConfig.key === 'load') {
-          return sortConfig.direction === 'asc' ? a.load - b.load : b.load - a.load;
-        }
         return 0;
       });
     }
@@ -88,17 +102,17 @@ export const FleetPage = () => {
     return result;
   }, [allMappedWagons, statusFilter, typeFilter, selectedStation, sortConfig]);
 
-  const handleSort = (key: 'id' | 'load' | 'type') => {
+  const handleSort = (key: 'id' | 'type') => {
     setSortConfig(current => ({
       key,
       direction: current?.key === key && current.direction === 'desc' ? 'asc' : 'desc'
     }));
   };
 
-  const renderSortIcon = (key: 'id' | 'load' | 'type') => {
+  const renderSortIcon = (key: 'id' | 'type') => {
     if (sortConfig?.key !== key) return <ArrowUpDown className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />;
-    return sortConfig.direction === 'desc' 
-      ? <ArrowDown className="w-3.5 h-3.5 text-[#0052cc]" /> 
+    return sortConfig.direction === 'desc'
+      ? <ArrowDown className="w-3.5 h-3.5 text-[#0052cc]" />
       : <ArrowUp className="w-3.5 h-3.5 text-[#0052cc]" />;
   };
 
@@ -114,33 +128,62 @@ export const FleetPage = () => {
           
           <div className="flex flex-wrap items-center gap-3">
             {/* Фільтр по ТИПУ (Gondola, Cement Hopper, Grain Hopper) */}
-            <div className="relative min-w-42.5">
-              <Layers className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <select 
-                value={typeFilter} 
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-[#0052cc]/20"
+            <div className="relative" ref={typeMenuRef}>
+              <button
+                onClick={() => setIsTypeMenuOpen(!isTypeMenuOpen)}
+                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border ${typeFilter !== 'Всі' ? 'bg-blue-50 border-[#0052cc] text-[#0052cc]' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
               >
-                <option value="Всі">Всі типи</option>
-                {uniqueTypes.map(type => (
-                  <option key={type} value={type}>{formatTypeName(type)}</option>
-                ))}
-              </select>
+                <Layers className="w-4 h-4" />
+                <span>{typeFilter === 'Всі' ? 'Всі типи' : formatTypeName(typeFilter)}</span>
+              </button>
+
+              {isTypeMenuOpen && (
+                <div className="absolute top-full mt-2 left-0 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden z-50 min-w-max">
+                  <button
+                    onClick={() => { setTypeFilter('Всі'); setIsTypeMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors flex items-center gap-2"
+                  >
+                    <span className="w-4">{typeFilter === 'Всі' && <Check size={16} className="text-[#0052cc]" />}</span>
+                    <span>Всі типи</span>
+                  </button>
+                  {uniqueTypes.map(type => (
+                    <button
+                      key={type}
+                      onClick={() => { setTypeFilter(type); setIsTypeMenuOpen(false); }}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors flex items-center gap-2"
+                    >
+                      <span className="w-4">{typeFilter === type && <Check size={16} className="text-[#0052cc]" />}</span>
+                      <span>{formatTypeName(type)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Фільтр по статусу */}
-            <div className="relative min-w-40">
-              <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <select 
-                value={statusFilter} 
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-[#0052cc]/20"
+            <div className="relative" ref={statusMenuRef}>
+              <button
+                onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
+                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border ${statusFilter !== 'Всі' ? 'bg-blue-50 border-[#0052cc] text-[#0052cc]' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
               >
-                <option value="Всі">Всі статуси</option>
-                {uniqueStatuses.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
+                <Filter className="w-4 h-4" />
+                <span>{statusFilter === 'Всі' ? 'Всі статуси' : statusFilter}</span>
+              </button>
+
+              {isStatusMenuOpen && (
+                <div className="absolute top-full mt-2 left-0 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden z-50 min-w-max">
+                  {allStatuses.map(status => (
+                    <button
+                      key={status}
+                      onClick={() => { setStatusFilter(status); setIsStatusMenuOpen(false); }}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors flex items-center gap-2"
+                    >
+                      <span className="w-4">{statusFilter === status && <Check size={16} className="text-[#0052cc]" />}</span>
+                      <span>{status === 'Всі' ? 'Всі статуси' : status}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Пошук станції */}
@@ -185,14 +228,11 @@ export const FleetPage = () => {
                 </th>
                 <th className={pageStyles.th}>Статус</th>
                 <th className={pageStyles.th}>Місцезнаходження</th>
-                <th className={`${pageStyles.th} cursor-pointer group`} onClick={() => handleSort('load')}>
-                  <div className="flex items-center gap-1.5">Завантаженість {renderSortIcon('load')}</div>
-                </th>
               </tr>
             </thead>
             <tbody>
               {fleetData.length === 0 ? (
-                <tr><td className={pageStyles.td} colSpan={5}><div className="flex flex-col items-center py-8 text-slate-500"><Search className="w-8 h-8 text-slate-300 mb-2" /><p>Нічого не знайдено</p></div></td></tr>
+                <tr><td className={pageStyles.td} colSpan={4}><div className="flex flex-col items-center py-8 text-slate-500"><Search className="w-8 h-8 text-slate-300 mb-2" /><p>Нічого не знайдено</p></div></td></tr>
               ) : (
                 fleetData.map((wagon, idx) => (
                   <tr key={idx} className={pageStyles.row}>
@@ -200,12 +240,6 @@ export const FleetPage = () => {
                     <td className={pageStyles.td}>{formatTypeName(wagon.type)}</td>
                     <td className={pageStyles.td}><span className={badgeClass(wagonStatusBadgeVariant(wagon.status))}>{wagon.status}</span></td>
                     <td className={pageStyles.td}>{wagon.station}</td>
-                    <td className={pageStyles.td}>
-                      <div className="flex items-center gap-3">
-                        <div className={`${progressTrackClass('sm')} w-32`}><div className={progressFillClass('primary', 'sm')} style={{ width: `${wagon.load}%` }} /></div>
-                        <span className="text-xs font-bold text-slate-600 w-8">{wagon.load}%</span>
-                      </div>
-                    </td>
                   </tr>
                 ))
               )}

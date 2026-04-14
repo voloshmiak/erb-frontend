@@ -1,7 +1,6 @@
 import { useMapStore } from '@/6_shared/model/store';
-import { Zap, Pause, Package, RotateCcw, Check, ChevronDown } from 'lucide-react';
+import { RotateCcw, Check, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
-import { summarizeFleetStatus } from '@/6_shared/lib/utils';
 
 const stationFilterItems = [
   { id: 'freightStations', label: 'Вантажні', description: 'Вантажні станції', color: '#14b8a6', typeKey: 'freight' },
@@ -10,47 +9,11 @@ const stationFilterItems = [
   { id: 'borderStations', label: 'Прикордонні', description: 'Прикордонні пункти', color: '#ef4444', typeKey: 'border' },
 ] as const;
 
-const wagonFilterItems = [
-  { id: 'movingWagons', label: 'У русі', icon: Zap, description: 'Рухомий склад у русі', color: 'text-blue-600' },
-  { id: 'stationaryWagons', label: 'Стоять', icon: Pause, description: 'Зупинений склад', color: 'text-red-600' },
-  { id: 'loadingWagons', label: 'Завантаження', icon: Package, description: 'На завантаженні', color: 'text-orange-600' },
-] as const;
+const wagonFilterItems = [] as const;
 
-const filterPresets = {
-  operational: {
-    freightStations: true,
-    sortingStations: true,
-    portStations: true,
-    borderStations: true,
-    movingWagons: true,
-    stationaryWagons: false,
-    loadingWagons: true,
-  },
-  analytics: {
-    freightStations: true,
-    sortingStations: true,
-    portStations: true,
-    borderStations: true,
-    movingWagons: false,
-    stationaryWagons: true,
-    loadingWagons: true,
-  },
-  all: {
-    freightStations: true,
-    sortingStations: true,
-    portStations: true,
-    borderStations: true,
-    movingWagons: true,
-    stationaryWagons: true,
-    loadingWagons: true,
-  },
-} as const;
-
-type FilterPresetKey = keyof typeof filterPresets;
 
 export const MapFilter = () => {
-  const { filters, setFilter, resetFilters, fleetStatus, graph } = useMapStore();
-  const [showDescription, setShowDescription] = useState(false);
+  const { filters, setFilter, resetFilters, graph } = useMapStore();
   const [isExpanded, setIsExpanded] = useState(true);
 
   const normalizeTypeKey = (rawType?: string): string =>
@@ -64,8 +27,6 @@ export const MapFilter = () => {
     return acc;
   }, {});
 
-  const fleetSummary = summarizeFleetStatus(fleetStatus);
-
   const handleResetFilters = () => {
     resetFilters();
   };
@@ -74,30 +35,12 @@ export const MapFilter = () => {
     (item) => filters[item.id as keyof typeof filters]
   );
 
-  const allWagonsEnabled = wagonFilterItems.every(
-    (item) => filters[item.id as keyof typeof filters]
-  );
-
-  const visibleWagonCount = wagonFilterItems.reduce((sum, item) => {
-    if (!filters[item.id as keyof typeof filters]) return sum;
-
-    if (item.id === 'movingWagons') return sum + fleetSummary.moving;
-    if (item.id === 'stationaryWagons') return sum + fleetSummary.stationary;
-    if (item.id === 'loadingWagons') return sum + fleetSummary.loading;
-
-    return sum;
-  }, 0);
-
   const enabledStationCount = stationFilterItems.filter(
     (item) => filters[item.id as keyof typeof filters]
   ).length;
 
-  const enabledWagonCount = wagonFilterItems.filter(
-    (item) => filters[item.id as keyof typeof filters]
-  ).length;
-
-  const totalEnabledFilters = enabledStationCount + enabledWagonCount;
-  const totalFilterCount = stationFilterItems.length + wagonFilterItems.length;
+  const totalEnabledFilters = enabledStationCount;
+  const totalFilterCount = stationFilterItems.length;
 
   const toggleAllStations = () => {
     const newValue = !allStationsEnabled;
@@ -106,26 +49,7 @@ export const MapFilter = () => {
     });
   };
 
-  const toggleAllWagons = () => {
-    const newValue = !allWagonsEnabled;
-    wagonFilterItems.forEach((item) => {
-      setFilter(item.id as keyof typeof filters, newValue);
-    });
-  };
 
-  const applyPreset = (presetKey: FilterPresetKey) => {
-    const preset = filterPresets[presetKey];
-    (Object.keys(preset) as Array<keyof typeof preset>).forEach((key) => {
-      setFilter(key, preset[key]);
-    });
-  };
-
-  const isPresetActive = (presetKey: FilterPresetKey): boolean => {
-    const preset = filterPresets[presetKey];
-    return (Object.keys(preset) as Array<keyof typeof preset>).every(
-      (key) => filters[key] === preset[key]
-    );
-  };
 
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/70 shadow-xl backdrop-blur-md">
@@ -150,12 +74,6 @@ export const MapFilter = () => {
           </span>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowDescription((prev) => !prev)}
-              className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100"
-            >
-              {showDescription ? 'Сховати описи' : 'Показати описи'}
-            </button>
-            <button
               onClick={handleResetFilters}
               className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-800"
               title="Скинути всі фільтри"
@@ -166,38 +84,6 @@ export const MapFilter = () => {
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <button
-            onClick={() => applyPreset('operational')}
-            className={`rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-              isPresetActive('operational')
-                ? 'border-blue-300 bg-blue-50 text-blue-700'
-                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            Оперативний
-          </button>
-          <button
-            onClick={() => applyPreset('analytics')}
-            className={`rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-              isPresetActive('analytics')
-                ? 'border-blue-300 bg-blue-50 text-blue-700'
-                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            Аналітика
-          </button>
-          <button
-            onClick={() => applyPreset('all')}
-            className={`rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-              isPresetActive('all')
-                ? 'border-blue-300 bg-blue-50 text-blue-700'
-                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            Все
-          </button>
-        </div>
       </div>
 
       {isExpanded && (
@@ -258,9 +144,6 @@ export const MapFilter = () => {
                           {stationTypeCounts[item.typeKey] || 0}
                         </span>
                       </div>
-                      {showDescription && (
-                        <div className={`mt-0.5 text-[10px] ${isEnabled ? 'text-slate-500' : 'text-slate-400'}`}>{item.description}</div>
-                      )}
                     </div>
                   </label>
                 );
@@ -268,66 +151,6 @@ export const MapFilter = () => {
             </div>
           </section>
 
-          <section className="space-y-2 rounded-xl border border-slate-200 bg-white/90 p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Статуси парку</label>
-                <p className="mt-0.5 text-[10px] text-slate-400">Показано {visibleWagonCount} з {fleetSummary.totalWagons}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold text-slate-400">{enabledWagonCount}/{wagonFilterItems.length}</span>
-                <button
-                  onClick={toggleAllWagons}
-                  className="text-[10px] font-semibold uppercase tracking-wide text-blue-600 transition-colors hover:text-blue-700"
-                >
-                  {allWagonsEnabled ? 'Вимкнути все' : 'Увімкнути все'}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {wagonFilterItems.map((item) => {
-                const isEnabled = filters[item.id as keyof typeof filters];
-
-                return (
-                  <label
-                    key={item.id}
-                    className={`group flex cursor-pointer items-center gap-3 rounded-lg border p-2.5 transition-all duration-200 ${
-                      isEnabled
-                        ? 'border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:bg-slate-50'
-                        : 'border-transparent bg-slate-100/70 hover:bg-slate-200/60'
-                    }`}
-                  >
-                    <span className="relative inline-flex h-5 w-5 flex-shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={isEnabled}
-                        onChange={(e) => setFilter(item.id as keyof typeof filters, e.target.checked)}
-                        className="peer absolute inset-0 m-0 h-5 w-5 cursor-pointer appearance-none rounded-md border border-slate-300 bg-white transition-all checked:border-blue-600 checked:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
-                      />
-                      <Check size={14} className="pointer-events-none absolute left-0.5 top-0.5 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
-                    </span>
-
-                    <item.icon size={16} className={`${item.color} flex-shrink-0 transition-transform group-hover:scale-110`} />
-
-                    <div className="min-w-0 flex-1">
-                      <div className={`text-sm font-semibold ${isEnabled ? 'text-slate-700 group-hover:text-slate-900' : 'text-slate-500'}`}>
-                        {item.label}
-                      </div>
-                      <div className="mt-0.5 text-[10px] text-slate-400">
-                        {item.id === 'movingWagons' && `${fleetSummary.moving} у русі`}
-                        {item.id === 'stationaryWagons' && `${fleetSummary.stationary} стоять`}
-                        {item.id === 'loadingWagons' && `${fleetSummary.loading} на завантаженні`}
-                      </div>
-                      {showDescription && (
-                        <div className="mt-0.5 text-[10px] text-slate-500">{item.description}</div>
-                      )}
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          </section>
         </div>
       )}
     </div>

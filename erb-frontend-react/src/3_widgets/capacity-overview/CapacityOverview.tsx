@@ -90,31 +90,6 @@ export const CapacityOverview = ({ onManageClick }: { onManageClick?: () => void
         </div>
       </div>
 
-      <div className="w-full xl:w-[320px] bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
-        <div>
-          <h3 className="font-bold text-lg text-slate-900 mb-1">Статус парку</h3>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-8">Локомотиви та вагони</p>
-          
-          <div className="space-y-6">
-            <div className="flex items-center gap-5">
-              <span className="text-4xl font-black text-slate-900 w-16">{availableUnits}</span>
-              <span className="text-xs font-bold text-slate-500 leading-tight">ДОСТУПНІ<br/>ОДИНИЦІ</span>
-            </div>
-            
-            <div className="flex items-center gap-5">
-              <span className="text-4xl font-black text-slate-900 w-16">{maintenanceUnits}</span>
-              <span className="text-xs font-bold text-slate-500 leading-tight">НА ТЕХНІЧНОМУ<br/>ОБСЛУГОВУВАННІ</span>
-            </div>
-          </div>
-        </div>
-
-        <button 
-          onClick={onManageClick} 
-          className="w-full mt-8 py-3 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-200 transition-colors bg-white shadow-sm"
-        >
-          Управління активами
-        </button>
-      </div>
 
     </div>
   );

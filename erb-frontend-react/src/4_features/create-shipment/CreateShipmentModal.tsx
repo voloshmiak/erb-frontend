@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { orderService, type WagonType, type OrderType } from '../../5_entities/order/api/orderService'; 
-import { X, MapPin, Flag, Calendar, Info, ArrowRight, ChevronDown, User, ShieldCheck, CheckCircle2, Building2 } from 'lucide-react';
+import { X, Flag, Calendar, Info, ArrowRight, ChevronDown, User, ShieldCheck, CheckCircle2, Building2 } from 'lucide-react';
 import { useMapStore } from '@/6_shared/model/store';
 
 interface CreateShipmentModalProps {
@@ -13,16 +13,12 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Стейти полів форми
-  const [orderType, setOrderType] = useState<'private' | 'service'>('private');
+  const [orderType, setOrderType] = useState<'external' | 'internal'>('external');
   const [clientName, setClientName] = useState('');
   const [cargoType, setCargoType] = useState<WagonType>('gondola');
   const [quantity, setQuantity] = useState(''); // Змінено з ваги на кількість вагонів
   
   // Стейти для розумного пошуку станцій
-  const [origin, setOrigin] = useState(''); // Зберігає ID
-  const [originSearch, setOriginSearch] = useState(''); // Зберігає текст
-  const [isOriginFocused, setIsOriginFocused] = useState(false);
-  
   const [destination, setDestination] = useState(''); // Зберігає ID
   const [destSearch, setDestSearch] = useState(''); // Зберігає текст
   const [isDestFocused, setIsDestFocused] = useState(false);
@@ -79,14 +75,14 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
   };
 
   const handleNext = (currentStep: number) => {
-    // Валідація: вимагаємо назву компанії ТІЛЬКИ якщо це приватне замовлення
-    if (currentStep === 1 && orderType === 'private' && !clientName) return alert('Введіть назву компанії');
+    // Валідація: вимагаємо назву компанії ТІЛЬКИ якщо це зовнішнє замовлення
+    if (currentStep === 1 && orderType === 'external' && !clientName) return alert('Введіть назву компанії');
     if (currentStep === 3 && !destination) return alert('Оберіть станцію призначення зі списку');
     setActiveStep(currentStep + 1);
   };
 
   const handleSubmit = async () => {
-    if ((orderType === 'private' && !clientName) || !destination || !date) {
+    if ((orderType === 'external' && !clientName) || !destination || !date) {
       alert('Будь ласка, заповніть всі обов\'язкові поля.');
       return;
     }
@@ -101,23 +97,23 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
 
     try {
       await orderService.createOrder({
-        // Якщо службове - відправляємо заглушку, інакше реальну назву
-        clientName: orderType === 'service' ? 'Службове (Укрзалізниця)' : clientName, 
+        // Якщо внутрішнє - відправляємо заглушку, інакше реальну назву
+        clientName: orderType === 'internal' ? 'Службове (Укрзалізниця)' : clientName,
         desiredDate: apiDate,
         quantity: parseInt(quantity) || 1, // Відправляємо кількість вагонів
         stationToId: destination,
         wagonType: cargoType,
-        type: orderType as OrderType,
+        type: orderType,
       });
-      
+
       // Очищення форми
-      setOrderType('private'); setClientName(''); setQuantity(''); 
-      setOrigin(''); setOriginSearch(''); setDestination(''); setDestSearch(''); 
+      setOrderType('external'); setClientName(''); setQuantity('');
+      setDestination(''); setDestSearch('');
       setDate(''); setInsuranceOption('BASE');
       setActiveStep(1);
-      onClose(); 
-      
-    } catch (error) { 
+      onClose();
+
+    } catch (error) {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
       alert(`Помилка при створенні запиту на сервері: ${message}`);
       console.error(error);
@@ -172,30 +168,30 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
             
             {/* КРОК 1: Замовник */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-              <StepHeader 
-                stepNum={1} 
-                title="Деталі замовника" 
-                summary={orderType === 'service' ? 'Службове замовлення УЗ' : (clientName || 'Не вказано')} 
+              <StepHeader
+                stepNum={1}
+                title="Деталі замовника"
+                summary={orderType === 'internal' ? 'Службове замовлення УЗ' : (clientName || 'Не вказано')}
               />
               {activeStep === 1 && (
                 <div className="p-6 border-t border-slate-100 animate-in slide-in-from-top-2">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Тип замовлення</label>
                   <div className="flex bg-slate-100 p-1 rounded-lg mb-6">
-                    <button 
-                      onClick={() => setOrderType('private')} 
-                      className={`flex-1 py-2.5 text-xs font-bold rounded-md transition-all flex justify-center items-center gap-2 ${orderType === 'private' ? 'text-[#0052cc] bg-white shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-200'}`}
+                    <button
+                      onClick={() => setOrderType('external')}
+                      className={`flex-1 py-2.5 text-xs font-bold rounded-md transition-all flex justify-center items-center gap-2 ${orderType === 'external' ? 'text-[#0052cc] bg-white shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-200'}`}
                     >
                       <Building2 className="w-4 h-4" /> ПРИВАТНА КОМПАНІЯ
                     </button>
-                    <button 
-                      onClick={() => setOrderType('service')} 
-                      className={`flex-1 py-2.5 text-xs font-bold rounded-md transition-all flex justify-center items-center gap-2 ${orderType === 'service' ? 'text-emerald-700 bg-white shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-200'}`}
+                    <button
+                      onClick={() => setOrderType('internal')}
+                      className={`flex-1 py-2.5 text-xs font-bold rounded-md transition-all flex justify-center items-center gap-2 ${orderType === 'internal' ? 'text-emerald-700 bg-white shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-200'}`}
                     >
                       <CheckCircle2 className="w-4 h-4" /> СЛУЖБОВЕ (УЗ)
                     </button>
                   </div>
 
-                  {orderType === 'private' ? (
+                  {orderType === 'external' ? (
                     <div className="mb-6 animate-in fade-in">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Назва компанії <span className="text-red-500">*</span></label>
                       <div className="relative">
@@ -259,49 +255,6 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
               {activeStep === 3 && (
                 <div className="p-6 border-t border-slate-100 animate-in slide-in-from-top-2">
                   <div className="space-y-6 mb-6">
-                    
-                    {/* Станція відправлення */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Станція відправлення</label>
-                      <div className="relative">
-                        <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          value={originSearch}
-                          onChange={(e) => {
-                            setOriginSearch(e.target.value);
-                            setOrigin(''); // Скидаємо ID, якщо юзер почав вводити новий текст
-                          }}
-                          onFocus={() => setIsOriginFocused(true)}
-                          onBlur={() => setIsOriginFocused(false)}
-                          placeholder="Почніть вводити назву (опціонально)..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-3 text-sm font-medium focus:ring-2 focus:ring-[#0052cc]/20 outline-none"
-                        />
-                        {/* Випадаючий список з підказками */}
-                        {isOriginFocused && originSearch && !origin && (
-                          <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                            {stations.filter(s => (s.name || '').toLowerCase().startsWith(originSearch.toLowerCase())).length > 0 ? (
-                              stations.filter(s => (s.name || '').toLowerCase().startsWith(originSearch.toLowerCase())).map(s => (
-                                <div
-                                  key={s.stationId || Math.random().toString()}
-                                  onMouseDown={(e) => {
-                                    e.preventDefault(); // Запобігає onBlur інпуту
-                                    setOrigin(s.stationId || ''); // ВИПРАВЛЕНО
-                                    setOriginSearch(s.name || '');
-                                    setIsOriginFocused(false);
-                                  }}
-                                  className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer text-sm font-medium text-slate-700 border-b border-slate-50 last:border-0"
-                                >
-                                  {s.name}
-                                </div>
-                              ))
-                            ) : (
-                              <div className="px-4 py-3 text-sm text-slate-500">Станцій не знайдено</div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
 
                     {/* Станція призначення */}
                     <div>
@@ -425,33 +378,33 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
             <div className="space-y-4 text-sm font-medium border-b border-slate-100 pb-6 mb-6">
               <div className="flex justify-between text-slate-700">
                 <span>Тариф за маршрут</span>
-                <span>{orderType === 'service' ? '₴0.00' : '₴1,240.00'}</span>
+                <span>{orderType === 'internal' ? '₴0.00' : '₴1,240.00'}</span>
               </div>
               <div className="flex justify-between text-slate-700">
                 <span>Паливна надбавка</span>
-                <span>{orderType === 'service' ? '₴0.00' : '₴312.45'}</span>
+                <span>{orderType === 'internal' ? '₴0.00' : '₴312.45'}</span>
               </div>
-              {insuranceOption === 'FULL' && orderType === 'private' && (
+              {insuranceOption === 'FULL' && orderType === 'external' && (
                 <div className="flex justify-between text-emerald-600 font-bold animate-in fade-in">
                   <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Повне страхування</span>
                   <span>+₴450.00</span>
                 </div>
               )}
             </div>
-            
+
             <div className="flex justify-between items-end mb-6">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Орієнтовна вартість</span>
               <span className="text-2xl font-black text-[#0f2e5a]">
-                {orderType === 'service' ? 'СЛУЖБОВЕ' : (insuranceOption === 'FULL' ? '₴2,002.45' : '₴1,552.45')}
+                {orderType === 'internal' ? 'СЛУЖБОВЕ' : (insuranceOption === 'FULL' ? '₴2,002.45' : '₴1,552.45')}
               </span>
             </div>
-            
+
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
               <div className="flex items-center gap-2 text-[10px] font-bold text-[#0052cc] uppercase tracking-widest mb-2">
                 <Info className="w-3 h-3" /> До відома
               </div>
               <p className="text-xs text-blue-900 leading-relaxed">
-                {orderType === 'service' ? 'Службові перевезення не тарифікуються.' : 'Остаточна вартість формується після затвердження заявки диспетчером УЗ.'}
+                {orderType === 'internal' ? 'Службові перевезення не тарифікуються.' : 'Остаточна вартість формується після затвердження заявки диспетчером УЗ.'}
               </p>
             </div>
           </div>

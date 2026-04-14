@@ -1,4 +1,4 @@
-export type OrderStatus = 'У дорозі' | 'Очікує' | 'Підтверджено' | 'Доставлено';
+export type OrderStatus = 'Очікує' | 'Узгоджено' | 'Виконано' | 'Скасовано';
 export type OrderType = 'external' | 'internal';
 
 export interface Order {
