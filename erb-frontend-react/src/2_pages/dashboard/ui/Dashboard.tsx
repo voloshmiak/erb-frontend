@@ -23,8 +23,10 @@ export const Dashboard = () => {
     const totalWagons = fleetStatus?.totalWagons || 0;
     const loadedWagons = fleetStatus?.byType?._all?.loaded || 0;
     const utilization = totalWagons > 0 ? Math.round((loadedWagons / totalWagons) * 100) : 0;
+    const avgEmptyRunKmToday = fleetStatus?.avgEmptyRunKmToday ?? null;
 
-    return { activeOrders, queuedOrders, completedOrders, totalOrders, totalWagons, loadedWagons, utilization };
+    return { activeOrders, queuedOrders, completedOrders, totalOrders, totalWagons, loadedWagons, utilization, avgEmptyRunKmToday };
+
   }, [fleetStatus, orders]);
 
   const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);

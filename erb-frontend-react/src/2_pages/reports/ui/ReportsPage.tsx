@@ -58,7 +58,7 @@ export const ReportsPage = () => {
     <PageLayout mainClassName="p-6">
     <div className={pageStyles.surface}>
       <h1 className={pageStyles.title}>Логістичні звіти</h1>
-            
+
             <div className={pageStyles.metricGrid}>
               <MetricCard
                 label="Всього перевезено"

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { X, Search, Filter, Wrench, Train, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useMapStore } from '@/6_shared/model/store';
 import { badgeClass } from '@/6_shared/ui/pageStyles';
-import { mapWagonStatusToUi, mapWagonTypeToLabel } from '@/6_shared/lib/statusMappers';
+import { mapWagonTypeToLabel } from '@/6_shared/lib/statusMappers';
 
 interface ManageAssetsModalProps {
   isOpen: boolean;
@@ -20,25 +20,26 @@ interface AssetViewModel {
 }
 
 const mapUiStatusToAssetStatus = (status: string): AssetStatus => {
-  const uiStatus = mapWagonStatusToUi(status);
-  if (uiStatus === 'технічне обслуговування') return 'maintenance';
-  if (uiStatus === 'в дорозі' || uiStatus === 'розвантажується') return 'in_transit';
+  const normalized = status.toLowerCase();
+  if (normalized.includes('maint')) return 'maintenance';
+  if (normalized.includes('move') || normalized.includes('transit') || normalized.includes('dispatch') || normalized.includes('train')) return 'in_transit';
   return 'available';
 };
 
 export const ManageAssetsModal = ({ isOpen, onClose }: ManageAssetsModalProps) => {
   const [activeTab, setActiveTab] = useState<'all' | 'wagons' | 'locomotives'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const { wagons, graph, fetchFleet, fetchGraph } = useMapStore();
+  const { wagons, locomotives, graph, fetchFleet, fetchLocomotives, fetchGraph } = useMapStore();
 
   useEffect(() => {
     if (!isOpen) return;
     fetchFleet();
+    fetchLocomotives();
     fetchGraph();
-  }, [isOpen, fetchFleet, fetchGraph]);
+  }, [isOpen, fetchFleet, fetchLocomotives, fetchGraph]);
 
   const assets = useMemo<AssetViewModel[]>(() => {
-    return wagons.map((wagon) => {
+    const wagonAssets = wagons.map((wagon) => {
       const station = graph?.stations.find(
         (s) => String(s.stationId || '') === String(wagon.currentStationId || '')
       );
@@ -51,7 +52,23 @@ export const ManageAssetsModal = ({ isOpen, onClose }: ManageAssetsModalProps) =
         lastInspection: wagon.lastUnloadTime,
       };
     });
-  }, [wagons, graph]);
+
+    const locomotiveAssets = locomotives.map((loco) => {
+      const station = graph?.stations.find(
+        (s) => String(s.stationId || '') === String(loco.currentStationId || '')
+      );
+
+      return {
+        id: loco.number || loco.id,
+        type: 'locomotive',
+        status: mapUiStatusToAssetStatus(loco.status),
+        location: station?.name || 'Невизначено',
+        lastInspection: loco.availableAt || null,
+      };
+    });
+
+    return [...wagonAssets, ...locomotiveAssets];
+  }, [wagons, locomotives, graph]);
 
   const filteredAssets = assets.filter(asset => {
     const matchesTab = 
@@ -75,7 +92,7 @@ export const ManageAssetsModal = ({ isOpen, onClose }: ManageAssetsModalProps) =
     }
   };
 
-  const getTypeLabel = (type: string) => mapWagonTypeToLabel(type);
+  const getTypeLabel = (type: string) => type === 'locomotive' ? 'Локомотив' : mapWagonTypeToLabel(type);
 
   if (!isOpen) return null;
 
@@ -123,7 +140,7 @@ export const ManageAssetsModal = ({ isOpen, onClose }: ManageAssetsModalProps) =
                 <th className="px-8 py-4">ID Активу</th>
                 <th className="px-8 py-4">Тип</th>
                 <th className="px-8 py-4">Локація</th>
-                <th className="px-8 py-4">Останнє ТО</th>
+                <th className="px-8 py-4">Останнє ТО / Доступність</th>
                 <th className="px-8 py-4">Статус</th>
               </tr>
             </thead>

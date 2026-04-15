@@ -1,5 +1,5 @@
 // import React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Polyline, Marker, Tooltip, useMap, useMapEvents, ZoomControl, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import type { Feature, GeoJsonObject } from 'geojson';
@@ -287,12 +287,36 @@ const createOrderAnimationIcon = (type: 'orderCreated' | 'orderFulfilled' | 'wag
   });
 };
 
+const createTrainIcon = (hasLocomotive: boolean) => {
+  return L.divIcon({
+    className: 'train-icon',
+    html: `
+      <div style="
+        width: 30px; 
+        height: 30px; 
+        background: #0f172a; 
+        border: 2px solid #ffffff; 
+        border-radius: 50%; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        font-size: 16px;
+      ">
+        ${hasLocomotive ? '🚂' : '🚃'}
+      </div>
+    `,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  });
+};
+
 interface RailwayMapProps {
   compact?: boolean;
 }
 
 export const RailwayMap = ({ compact = false }: RailwayMapProps) => {
-  const { graph, fleetStatus, wagons, isLoading, filters, selectedStation, setSelectedStation, setSelectedWagon, isTerrainEnabled, assignmentRoutes, stationAnimations } = useMapStore();
+  const { graph, fleetStatus, wagons, trains, isLoading, filters, selectedStation, setSelectedStation, setSelectedWagon, isTerrainEnabled, stationAnimations } = useMapStore();
   const fleetSummary = summarizeFleetStatus(fleetStatus);
   const [currentZoom, setCurrentZoom] = useState(6);
   const showStationWagonLabels = !compact && currentZoom >= WAGON_LABEL_MIN_ZOOM;
@@ -343,14 +367,26 @@ export const RailwayMap = ({ compact = false }: RailwayMapProps) => {
     : [];
 
   const visibleStationNames = new Set(visibleStations.map((s) => s.name));
-  const stationMatchKeyToName = visibleStations.reduce<Record<string, string>>((acc, station) => {
-    const stationId = getStationEntityId(station);
-    const stationNameKey = normalizeEntityId(station.name);
 
-    if (stationId) acc[stationId] = station.name;
-    if (stationNameKey) acc[stationNameKey] = station.name;
-    return acc;
-  }, {});
+  const stationIdToData = useMemo(() => {
+    if (!graph) return {};
+    return graph.stations.reduce<Record<string, { lat: number; lng: number; name: string }>>((acc, s) => {
+      const id = normalizeEntityId(s.stationId);
+      if (id) acc[id] = { lat: s.lat, lng: s.lng, name: s.name };
+      return acc;
+    }, {});
+  }, [graph]);
+
+  const stationMatchKeyToName = useMemo(() => {
+    return visibleStations.reduce<Record<string, string>>((acc, station) => {
+      const stationId = getStationEntityId(station);
+      const stationNameKey = normalizeEntityId(station.name);
+
+      if (stationId) acc[stationId] = station.name;
+      if (stationNameKey) acc[stationNameKey] = station.name;
+      return acc;
+    }, {});
+  }, [visibleStations]);
 
   const visibleEdges = graph
     ? graph.edges.filter((edge) => visibleStationNames.has(edge.from) && visibleStationNames.has(edge.to))
@@ -364,7 +400,8 @@ export const RailwayMap = ({ compact = false }: RailwayMapProps) => {
       normalized.includes('move') ||
       normalized.includes('transit') ||
       normalized.includes('dispatch') ||
-      normalized.includes('travel')
+      normalized.includes('travel') ||
+      normalized.includes('in_train')
     ) {
       return 'movingWagons';
     }
@@ -401,14 +438,27 @@ export const RailwayMap = ({ compact = false }: RailwayMapProps) => {
     coordsMap[s.name] = [s.lat, s.lng];
   });
 
+  // Відображення потягів
+  const visibleTrains = (trains || []).filter(t => t.status !== 'arrived' && t.status !== 'in_transit');
+
   const visibleWagons = wagons
     .filter((wagon) => {
+      const filterKey = statusToFilterKey(wagon.status || '');
+      if (!filters[filterKey]) return false;
+
+      // Якщо вагон у потязі, він відображається через потяг, якщо потяг у русі
+      if (wagon.status === 'in_train') {
+        const train = (trains || []).find(t => t.wagonIds.includes(wagon.id));
+        if (train && train.status === 'in_transit') {
+          // Якщо потяг у русі, вагон не прив'язаний до станції в лейблі
+          return false;
+        }
+      }
+
       const stationKey = normalizeEntityId(wagon.currentStationId);
       if (!stationKey) return false;
       const matchedStationName = stationMatchKeyToName[stationKey];
-      if (!matchedStationName) return false;
-      const filterKey = statusToFilterKey(wagon.status || '');
-      return Boolean(filters[filterKey]);
+      return !!matchedStationName;
     });
 
   const wagonsByStation = visibleWagons
@@ -499,9 +549,8 @@ export const RailwayMap = ({ compact = false }: RailwayMapProps) => {
           const showLabel = showStationWagonLabels;
 
           return (
-            <>
+            <div key={station.name}>
               <Marker
-                key={station.name}
                 position={[station.lat, station.lng]}
                 icon={isSelected ? createSelectedStationIcon(stationColor) : createStationIcon(stationColor)}
                 eventHandlers={{
@@ -521,14 +570,42 @@ export const RailwayMap = ({ compact = false }: RailwayMapProps) => {
 
               {showLabel && (
                 <Marker
-                  key={`${station.name}-wagon-label`}
                   position={[station.lat, station.lng]}
                   icon={createStationWagonLabelIcon(stationWagons?.total || 0, stationWagons?.byType || {})}
                   interactive={false}
                   keyboard={false}
                 />
               )}
-            </>
+            </div>
+          );
+        })}
+
+        {/* РЕНДЕР ПОТЯГІВ */}
+        {visibleTrains.map(train => {
+          const source = stationIdToData[normalizeEntityId(train.sourceStationId)];
+          const target = stationIdToData[normalizeEntityId(train.nextStationId)];
+          if (!source || !target) return null;
+
+          // Просте відображення по центру між станціями, якщо в дорозі
+          const pos: [number, number] = train.status === 'in_transit'
+            ? [(source.lat + target.lat) / 2, (source.lng + target.lng) / 2]
+            : [source.lat, source.lng];
+
+          return (
+            <Marker
+              key={`train-${train.id}`}
+              position={pos}
+              icon={createTrainIcon(!!train.locomotiveId)}
+            >
+              <Tooltip direction="top" offset={[0, -10]}>
+                <div className="text-xs">
+                  <p className="font-bold">Потяг {train.id.slice(0, 8)}</p>
+                  <p>Вагонів: {train.wagonIds.length}</p>
+                  <p>Статус: {train.status === 'in_transit' ? 'У дорозі' : 'Формується'}</p>
+                  {train.locomotiveId && <p>Локомотив: ТАК</p>}
+                </div>
+              </Tooltip>
+            </Marker>
           );
         })}
 
@@ -543,21 +620,6 @@ export const RailwayMap = ({ compact = false }: RailwayMapProps) => {
           />
         ))}
 
-        {/* МАРШРУТИ ПРИЗНАЧЕНЬ (анімований пунктир) */}
-        {Object.values(assignmentRoutes).map((route) =>
-          route.points.length >= 2 ? (
-            <Polyline
-              key={`assignment-${route.assignmentId}`}
-              positions={route.points}
-              color="#ef4444"
-              weight={3}
-              opacity={0.9}
-              dashArray="12 6"
-              className="assignment-route-animated"
-              interactive={false}
-            />
-          ) : null
-        )}
 
 
       </MapContainer>
@@ -585,12 +647,6 @@ export const RailwayMap = ({ compact = false }: RailwayMapProps) => {
               <div className="w-4 h-0.5 bg-blue-400" />
               <span>Залізничний шлях ({visibleEdges.length})</span>
             </div>
-            {Object.keys(assignmentRoutes).length > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-0.5 border-t-2 border-dashed border-red-500" />
-                <span>Маршрути ({Object.keys(assignmentRoutes).length})</span>
-              </div>
-            )}
             <div className="pt-2 mt-2 border-t border-slate-100 space-y-1.5 text-slate-700">
               <div className="flex items-center justify-between gap-4">
                 <span>Парк</span>

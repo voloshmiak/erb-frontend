@@ -7,6 +7,7 @@ import { Dashboard } from '@/2_pages/dashboard/ui/Dashboard';
 import { FreightRequestPage } from '@/2_pages/freight-request/FreightRequestPage';
 import { FleetPage } from '@/2_pages/fleet/ui/FleetPage';
 import { ReportsPage } from '@/2_pages/reports/ui/ReportsPage';
+import { MetricsPage } from '@/2_pages/metrics/ui/MetricsPage';
 import { OperationsPage } from '@/2_pages/operations/ui/OperationsPage';
 import { SchedulePage } from '@/2_pages/schedule/ui/SchedulePage';
 
@@ -39,6 +40,9 @@ const App = () => {
         
         {/* Логістичні звіти */}
         <Route path="/reports" element={<ReportsPage />} />
+
+        {/* Метрики оптимізації */}
+        <Route path="/metrics" element={<MetricsPage />} />
 
         {/* Страница 404 */}
         <Route path="*" element={<div className="h-screen w-full flex items-center justify-center">404 - Сторінку не знайдено</div>} />

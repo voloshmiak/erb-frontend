@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { orderService, type WagonType, type OrderType } from '../../5_entities/order/api/orderService'; 
-import { X, Flag, Calendar, Info, ArrowRight, ChevronDown, User, ShieldCheck, CheckCircle2, Building2 } from 'lucide-react';
+import { orderService, type WagonType } from '../../5_entities/order/api/orderService'; 
+import { X, Flag, Calendar, Info, ArrowRight, ChevronDown, User, CheckCircle2, Building2 } from 'lucide-react';
 import { useMapStore } from '@/6_shared/model/store';
 
 interface CreateShipmentModalProps {
@@ -26,9 +26,6 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
   const [date, setDate] = useState('');
   const dateInputRef = useRef<HTMLInputElement>(null); // Реф для нативного календаря
   
-  // Страхування (поки що закоментовано в UI)
-  const [insuranceOption, setInsuranceOption] = useState<'BASE' | 'FULL'>('BASE');
-
   const { graph, fetchGraph } = useMapStore();
 
   useEffect(() => {
@@ -109,7 +106,7 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
       // Очищення форми
       setOrderType('external'); setClientName(''); setQuantity('');
       setDestination(''); setDestSearch('');
-      setDate(''); setInsuranceOption('BASE');
+      setDate('');
       setActiveStep(1);
       onClose();
 
@@ -355,9 +352,8 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
                     </div>
                   </div>
                   
-                  <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-                    <p className="text-xs text-slate-500">Перевірте підсумок справа перед відправкою.</p>
-                    <button 
+                  <div className="flex justify-end items-center pt-4 border-t border-slate-100">
+                    <button
                       onClick={handleSubmit} 
                       disabled={isSubmitting}
                       className="flex items-center gap-2 px-8 py-3 rounded-lg text-sm font-bold text-white bg-[#003b8e] hover:bg-[#002f70] disabled:bg-slate-400 transition-colors shadow-md"
@@ -371,43 +367,6 @@ export const CreateShipmentModal = ({ isOpen, onClose }: CreateShipmentModalProp
 
           </div>
 
-          {/* ПРАВА ЧАСТИНА: ПІДСУМОК */}
-          <div className="w-full lg:w-[320px] bg-white rounded-xl p-6 flex flex-col border border-slate-200 shadow-sm h-fit sticky top-0">
-            <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-6">Попередній розрахунок</h4>
-            
-            <div className="space-y-4 text-sm font-medium border-b border-slate-100 pb-6 mb-6">
-              <div className="flex justify-between text-slate-700">
-                <span>Тариф за маршрут</span>
-                <span>{orderType === 'internal' ? '₴0.00' : '₴1,240.00'}</span>
-              </div>
-              <div className="flex justify-between text-slate-700">
-                <span>Паливна надбавка</span>
-                <span>{orderType === 'internal' ? '₴0.00' : '₴312.45'}</span>
-              </div>
-              {insuranceOption === 'FULL' && orderType === 'external' && (
-                <div className="flex justify-between text-emerald-600 font-bold animate-in fade-in">
-                  <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Повне страхування</span>
-                  <span>+₴450.00</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-between items-end mb-6">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Орієнтовна вартість</span>
-              <span className="text-2xl font-black text-[#0f2e5a]">
-                {orderType === 'internal' ? 'СЛУЖБОВЕ' : (insuranceOption === 'FULL' ? '₴2,002.45' : '₴1,552.45')}
-              </span>
-            </div>
-
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-[#0052cc] uppercase tracking-widest mb-2">
-                <Info className="w-3 h-3" /> До відома
-              </div>
-              <p className="text-xs text-blue-900 leading-relaxed">
-                {orderType === 'internal' ? 'Службові перевезення не тарифікуються.' : 'Остаточна вартість формується після затвердження заявки диспетчером УЗ.'}
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -34,7 +34,12 @@ export const mapBackendOrderStatusToUi = (status: string): OrderStatus => {
 
 export const mapWagonStatusToUi = (status: string): WagonUiStatus => {
   const normalized = String(status || '').toLowerCase();
-  if (normalized.includes('transit') || normalized.includes('move') || normalized.includes('dispatch')) return 'в дорозі';
+  if (
+    normalized.includes('transit') || 
+    normalized.includes('move') || 
+    normalized.includes('dispatch') ||
+    normalized.includes('in_train')
+  ) return 'в дорозі';
   if (normalized.includes('load')) return 'завантажується';
   if (normalized.includes('unload')) return 'розвантажується';
   if (normalized.includes('maint')) return 'технічне обслуговування';

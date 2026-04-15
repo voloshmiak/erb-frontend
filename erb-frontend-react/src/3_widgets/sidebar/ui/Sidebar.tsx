@@ -1,12 +1,12 @@
-import { Map, TrainFront, HelpCircle, BookOpen, FilePlus2 } from 'lucide-react';
+import { Map, TrainFront, HelpCircle, BookOpen, FilePlus2, BarChart3 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-// @ts-expect-error
 import { EmergencyAlertButton } from '@/4_features/emergency_alert/ui/EmergencyAlertButton';
 
 const NAV_ITEMS = [
   { icon: Map, label: 'Мап мережі', path: '/' },
   { icon: FilePlus2, label: 'Вантажні перевезення', path: '/freight-request' },
   { icon: TrainFront, label: 'Парк вагонів', path: '/fleet' },
+  { icon: BarChart3, label: 'Метрики', path: '/metrics' },
 ];
 
 export const Sidebar = () => {

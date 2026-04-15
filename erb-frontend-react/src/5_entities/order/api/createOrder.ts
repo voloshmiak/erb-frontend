@@ -1,6 +1,6 @@
 
 // Наприклад: 'https://api.your-backend.com/orders'
-const API_URL = 'https://erb-backend-762050733390.europe-central2.run.app/api/orders';
+const API_URL = 'http:localhost/api/orders';
 
 export interface CreateOrderPayload {
   type: string;

@@ -2,7 +2,7 @@ export interface Wagon {
   id: string;
   number: string;
   type: string;
-  status: string;
+  status: 'idle' | 'moving' | 'loaded' | 'in_train' | string;
   currentStationId: string | null;
   lastUnloadTime: string | null;
   stateUntilHour: number | null;

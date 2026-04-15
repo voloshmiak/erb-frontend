@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { PageLayout } from '@/6_shared/ui/PageLayout';
 import { badgeClass, pageStyles } from '@/6_shared/ui/pageStyles';
 import { useMapStore } from '@/6_shared/model/store';
-import { mapWagonStatusToUi, wagonStatusBadgeVariant, type WagonUiStatus } from '@/6_shared/lib/statusMappers';
+import { mapWagonStatusToUi, wagonStatusBadgeVariant } from '@/6_shared/lib/statusMappers';
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, Filter, X, MapPin, Layers, Check } from 'lucide-react';
 
 export const FleetPage = () => {

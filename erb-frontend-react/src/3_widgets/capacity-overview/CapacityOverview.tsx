@@ -11,7 +11,7 @@ const TYPE_LABELS: Record<string, string> = {
   _all: 'Увесь парк',
 };
 
-export const CapacityOverview = ({ onManageClick }: { onManageClick?: () => void }) => {
+export const CapacityOverview = ({ onManageClick: _onManageClick }: { onManageClick?: () => void }) => {
   const { fleetStatus, fetchFleet, fetchGraph } = useMapStore();
 
   useEffect(() => {
@@ -19,7 +19,7 @@ export const CapacityOverview = ({ onManageClick }: { onManageClick?: () => void
     fetchGraph();
   }, [fetchFleet, fetchGraph]);
 
-  const { utilizationRows, availableUnits, maintenanceUnits } = useMemo(() => {
+  const { utilizationRows, availableUnits: _availableUnits, maintenanceUnits: _maintenanceUnits } = useMemo(() => {
     const byType = fleetStatus?.byType || {};
     const totalWagons = Number(fleetStatus?.totalWagons || 0);
 

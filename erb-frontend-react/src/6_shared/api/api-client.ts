@@ -5,7 +5,7 @@ const API_BASE_URL =
   'https://erb-backend-762050733390.europe-central2.run.app/api';
 
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },

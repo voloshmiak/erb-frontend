@@ -6,6 +6,7 @@ export interface FleetStatusBucketLike {
   idle?: number;
   loaded?: number;
   maintenance?: number;
+  inTrain?: number;
   total?: number;
 }
 
@@ -37,7 +38,7 @@ export function summarizeFleetStatus(fleetStatus?: FleetStatusLike | null): Flee
   let stationary = 0;
 
   Object.values(byType).forEach((stats) => {
-    const movingCount = toCount(stats?.emptyMoving);
+    const movingCount = toCount(stats?.emptyMoving) + toCount(stats?.inTrain);
     const loadingCount = toCount(stats?.loaded);
     const stationaryCount = toCount(stats?.idle) + toCount(stats?.maintenance);
 

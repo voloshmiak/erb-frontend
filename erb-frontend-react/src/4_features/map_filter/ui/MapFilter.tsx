@@ -9,8 +9,6 @@ const stationFilterItems = [
   { id: 'borderStations', label: 'Прикордонні', description: 'Прикордонні пункти', color: '#ef4444', typeKey: 'border' },
 ] as const;
 
-const wagonFilterItems = [] as const;
-
 
 export const MapFilter = () => {
   const { filters, setFilter, resetFilters, graph } = useMapStore();

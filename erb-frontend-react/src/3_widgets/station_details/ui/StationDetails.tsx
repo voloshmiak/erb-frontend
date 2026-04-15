@@ -48,8 +48,8 @@ export const StationDetails = () => {
     [stationWagons]
   );
 
-  const formingTrains = useMemo(() => 
-    trains.filter(t => t.sourceStationId === stationId && t.status === 'forming'),
+  const formingTrains = useMemo(() =>
+    (trains || []).filter(t => t.sourceStationId === stationId && t.status === 'forming'),
     [trains, stationId]
   );
 

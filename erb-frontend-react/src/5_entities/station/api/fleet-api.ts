@@ -19,22 +19,25 @@ const normalizeFleetBucket = (stats?: FleetStatusBucketLike): Required<FleetStat
   const idle = toCount(stats?.idle);
   const loaded = toCount(stats?.loaded);
   const maintenance = toCount(stats?.maintenance);
-  const total = toCount(stats?.total) || emptyMoving + idle + loaded + maintenance;
+  const inTrain = toCount(stats?.inTrain);
+  const total = toCount(stats?.total) || emptyMoving + idle + loaded + maintenance + inTrain;
 
   return {
     emptyMoving,
     idle,
     loaded,
     maintenance,
+    inTrain,
     total,
   };
 };
 
 const toStatusBucketKey = (status: string): keyof FleetStatusBucketLike => {
-  const normalized = status.toLowerCase().replace(/[^a-z]/g, '');
+  const normalized = status.toLowerCase().replace(/[^a-z_]/g, '');
 
-  if (normalized.includes('load')) return 'loaded';
-  if (normalized.includes('maint')) return 'maintenance';
+  if (normalized.includes('loaded')) return 'loaded';
+  if (normalized.includes('maintenance')) return 'maintenance';
+  if (normalized === 'in_train' || normalized.includes('intrain')) return 'inTrain';
   if (
     normalized.includes('move') ||
     normalized.includes('transit') ||
@@ -60,6 +63,7 @@ const deriveByTypeFromWagons = (wagons: Wagon[]): Record<string, Required<FleetS
         idle: 0,
         loaded: 0,
         maintenance: 0,
+        inTrain: 0,
         total: 0,
       });
 
@@ -84,15 +88,16 @@ const normalizeFleetStatus = (rawData: unknown): FleetStatusSummary => {
   const emptyMoving = sc ? toCount(sc.empty_moving) : 0;
   const idle        = sc ? toCount(sc.idle)         : 0;
   const maintenance = sc ? toCount(sc.maintenance)  : 0;
+  const inTrain     = sc ? toCount(sc.in_train)     : 0;
 
   const totalWagons = sc
-    ? loaded + emptyMoving + idle + maintenance
+    ? loaded + emptyMoving + idle + maintenance + inTrain
     : (toCount((raw as FleetStatusLike).totalWagons) || wagons.length);
 
   // якщо є statusCounts — використовуємо його як джерело правди для статусів
   // byType з вагонів тільки як fallback коли statusCounts відсутній
   const resolvedByType = sc
-    ? { _all: normalizeFleetBucket({ emptyMoving, idle, loaded, maintenance, total: totalWagons }) }
+    ? { _all: normalizeFleetBucket({ emptyMoving, idle, loaded, maintenance, inTrain, total: totalWagons }) }
     : deriveByTypeFromWagons(wagons);
 
   return {

@@ -4,8 +4,11 @@ import { stationApi } from '@/5_entities/station/api/station-api';
 import { fleetApi, type FleetStatusSummary } from '@/5_entities/station/api/fleet-api';
 import type { Wagon } from '@/5_entities/wagon/type';
 import { apiClient } from '@/6_shared/api/api-client';
+import { metricsApi, type MatchingMetrics } from '@/6_shared/api/metrics-api';
 import type { Train } from '@/5_entities/train/model/type';
 import { trainService } from '@/5_entities/train/api/trainService';
+import type { Locomotive } from '@/5_entities/locomotive/model/type';
+import { locomotiveApi } from '@/5_entities/locomotive/api/locomotive-api';
 
 export type EventType = 
   | "orderCreated" 
@@ -18,7 +21,8 @@ export type EventType =
   | "simTick"
   | "trainCreated"
   | "trainDispatched"
-  | "trainArrived";
+  | "trainArrived"
+  | "locomotiveDispatched";
 
 const EVENT_TYPES: EventType[] = [
   'orderCreated',
@@ -32,6 +36,7 @@ const EVENT_TYPES: EventType[] = [
   'trainCreated',
   'trainDispatched',
   'trainArrived',
+  'locomotiveDispatched',
 ];
 
 const EVENT_TYPES_SET = new Set<string>(EVENT_TYPES);
@@ -53,10 +58,14 @@ const resolveEventMessage = (type: EventType, payload: Record<string, unknown>):
       const assignment = (payload.assignment && typeof payload.assignment === 'object')
         ? payload.assignment as Record<string, unknown>
         : payload;
-      const km = Number(assignment.emptyRunKm || assignment.EmptyRunKM) || 0;
+      const emptyKm = Number(assignment.emptyRunKm || assignment.EmptyRunKM) || 0;
+      const loadedKm = Number(assignment.loadedRunKm) || 0;
       const etaRaw = assignment.estimatedArrival || assignment.EstimatedArrival;
       const eta = etaRaw ? new Date(String(etaRaw)).toLocaleDateString('uk-UA') : '';
-      return `Маршрут ${km}км${eta ? `, ETA ${eta}` : ''}`;
+      const kmLabel = loadedKm > 0
+        ? `${emptyKm}км пор. / ${loadedKm}км вант.`
+        : `${emptyKm}км`;
+      return `Маршрут ${kmLabel}${eta ? `, ETA ${eta}` : ''}`;
     }
     case 'wagonDispatched': {
       const status = String(payload.Status || '').trim();
@@ -94,6 +103,10 @@ const resolveEventMessage = (type: EventType, payload: Record<string, unknown>):
     }
     case 'trainArrived': {
       return `Потяг прибув у пункт призначення`;
+    }
+    case 'locomotiveDispatched': {
+      const lNum = String(payload.locomotiveNumber || '').trim();
+      return `Локомотив ${lNum || ''} відправлено в рейс`;
     }
     default:
       return 'Системна подія';
@@ -148,6 +161,8 @@ interface MapState {
   fleetStatus: FleetStatusSummary | null;
   wagons: Wagon[];
   trains: Train[];
+  locomotives: Locomotive[];
+  metrics: MatchingMetrics | null;
   selectedWagon: Wagon | null;
   eventLog: MapEvent[];
   unreadCount: number;
@@ -166,6 +181,8 @@ interface MapState {
   fetchGraph: () => Promise<void>;
   fetchFleet: () => Promise<void>;
   fetchTrains: () => Promise<void>;
+  fetchLocomotives: () => Promise<void>;
+  fetchMetrics: () => Promise<void>;
   fetchSimulation: () => Promise<void>;
   addEvent: (event: MapEvent) => void;
   setFilter: (key: keyof MapFilters, value: boolean) => void;
@@ -181,13 +198,15 @@ interface MapState {
 }
 
 const WAGON_EVENTS = new Set<EventType>(['wagonMoved', 'wagonArrived', 'wagonDispatched', 'wagonUnloaded']);
-const TRAIN_EVENTS = new Set<EventType>(['trainCreated', 'trainDispatched', 'trainArrived']);
+const TRAIN_EVENTS = new Set<EventType>(['trainCreated', 'trainDispatched', 'trainArrived', 'locomotiveDispatched']);
 
 export const useMapStore = create<MapState>((set, get) => ({
   graph: null,
   fleetStatus: null,
   wagons: [],
   trains: [],
+  locomotives: [],
+  metrics: null,
   selectedWagon: null,
   eventLog: [],
   unreadCount: 0,
@@ -518,9 +537,28 @@ export const useMapStore = create<MapState>((set, get) => ({
     try {
       console.log('🚄 Starting fetchTrains...');
       const data = await trainService.getTrains();
-      set({ trains: data });
+      set({ trains: data || [] });
     } catch (error) {
       console.error('❌ Store fetchTrains error:', error);
+    }
+  },
+
+  fetchLocomotives: async () => {
+    try {
+      console.log('🚂 Starting fetchLocomotives...');
+      const data = await locomotiveApi.getLocomotives();
+      set({ locomotives: data });
+    } catch (error) {
+      console.error('❌ Store fetchLocomotives error:', error);
+    }
+  },
+
+  fetchMetrics: async () => {
+    try {
+      const data = await metricsApi.getMetrics();
+      set({ metrics: data });
+    } catch (error) {
+      console.error('❌ Store fetchMetrics error:', error);
     }
   },
 
